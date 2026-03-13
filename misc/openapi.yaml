@@ -1,0 +1,153 @@
+openapi: 3.0.3
+info:
+  title: LibriMe API
+  description: API zum Vertonen von PDFs und Bildern (OCR + TTS)
+  version: 1.0.0
+
+paths:
+  # 1. Job erstellen (Datei hochladen)
+  /jobs:
+    post:
+      summary: Einen neuen Vertonungs-Job erstellen
+      description: Lädt ein PDF oder Bild hoch, um es in Audio umzuwandeln.
+      operationId: createJob
+      requestBody:
+        required: true
+        content:
+          multipart/form-data: # Wichtig für Datei-Uploads
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Das PDF oder Bild (png/jpg)
+                fileLanguage:
+                  type: string
+                  example: "en-US"
+                  description: Ausgangssprache der Datei
+                translationLanguage:
+                  type: string
+                  example: "en-US"
+                  description: Zielsprache für die Stimme
+                voiceId:
+                  type: string
+                  example: "male-v1"
+                  description: ID für eine spezifische Stimme
+                splittingId:
+                  type: string
+                  example: "DOCUMENT"
+                  description: ID für die Aufteilung der Ausgabefiles
+              required:
+                - file
+      responses:
+        '202':
+          description: Akzeptiert. Die Verarbeitung hat begonnen.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobCreatedResponse'
+        '400':
+          description: Ungültige Eingabe (z.B. falsches Dateiformat)
+
+  # 2. Status abfragen
+  /jobs/{jobId}:
+    get:
+      summary: Status eines Jobs abrufen
+      description: Gibt zurück, ob der Job noch läuft, fertig ist oder fehlgeschlagen ist.
+      operationId: getJobStatus
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Aktueller Status des Jobs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobStatusResponse'
+        '404':
+          description: Job nicht gefunden
+
+  # 3. Ergebnis herunterladen
+  /jobs/{jobId}/result:
+    get:
+      summary: Die fertige Audiodatei herunterladen
+      description: Gibt den MP3/WAV Stream zurück, wenn der Job fertig ist.
+      operationId: getJobResult
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Die Audiodatei
+          content:
+            audio/mpeg:
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: Job nicht gefunden oder noch nicht fertig
+        '409':
+          description: Job ist noch in Bearbeitung (Conflict)
+
+components:
+  schemas:
+    # Antwort nach dem Upload
+    JobCreatedResponse:
+      type: object
+      properties:
+        jobId:
+          type: string
+          format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        status:
+          $ref: '#/components/schemas/JobState'
+        message:
+          type: string
+          example: "Datei hochgeladen, Verarbeitung beginnt."
+        statusURL:
+          type: string
+          description: "Link zur Status Jobstatusabfrage"
+          example: "../jobs/123/"
+
+    # Antwort beim Polling
+    JobStatusResponse:
+      type: object
+      properties:
+        jobId:
+          type: string
+          format: uuid
+        status:
+          $ref: '#/components/schemas/JobState'
+        progress:
+          type: integer
+          minimum: 0
+          maximum: 100
+          description: Fortschritt in Prozent (optional)
+          example: 45
+        downloadUrl:
+          type: string
+          format: uri
+          description: Link zum Ergebnis (nur vorhanden, wenn status=COMPLETED)
+          example: ".../jobs/123/result"
+        error:
+          type: string
+          description: Fehlermeldung, falls status=FAILED
+
+    # Enum für den Status
+    JobState:
+      type: string
+      enum:
+        - QUEUED      # In der Warteschlange
+        - PROCESSING  # Wird gerade verarbeitet
+        - COMPLETED   # Fertig, kann heruntergeladen werden
+        - FAILED      # Fehler aufgetreten

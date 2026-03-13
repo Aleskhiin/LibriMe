@@ -1,0 +1,25 @@
+version: "3.9"
+
+services:
+
+  flask:
+    build:
+      context: .
+      dockerfile: Dockerfile.flask
+    container_name: flask_backend
+    ports:
+      - "5000:5000"
+    volumes:
+      - .:/app
+    environment:
+      - FLASK_ENV=production
+
+  fastapi:
+    build:
+      context: .
+      dockerfile: Dockerfile.fastapi
+    container_name: fastapi_backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app

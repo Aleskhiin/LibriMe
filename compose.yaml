@@ -1,0 +1,29 @@
+include:
+  - Backend/src/main/resources/compose.yaml
+  - AiModule/AIModule/compose.yaml
+services:
+  backend:
+    build:
+      context: Backend
+      dockerfile: libribackend.Dockerfile
+    ports:
+      - "8080:8080"
+    volumes:
+      - /opt/librime:/opt/librime/
+    depends_on:
+      mysql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      SPRING_RABBITMQ_HOST: spring_rabbitmq
+      #SPRING_RABBITMQ_USERNAME: user
+      #SPRING_RABBITMQ_PASSWORD: user
+      #SPRING_RABBITMQ_PORT: 5672
+      SPRING_DATASOURCE_URL: jdbc:mysql://spring_mysql:3306/libribackendDB
+      #SPRING_DATASOURCE_USERNAME: root
+      #SPRING_DATASOURCE_PASSWORD: test_pass
+      #SPRING_JPA_HIBERNATE_DLL-AUTO: create-drop
+
+#volumes:
+  #data-storage:
