@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LibriMe – Lokale Version 0.3</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="container">
+    <img src="{{ url_for('static', filename='logoBig.png') }}" alt="LibriMe Logo" class="logo">
+    <!-- Titel / Tagline -->
+    <h2 id="app-title">LibriMe</h2>
+    <h4 id="tagline">"Freedom starts in your ear."</h4>
+    <p class="subtitle" id="subtitle">Datei Upload & Download</p>
+
+    <!-- UI-Sprache (nur UI, nicht Übersetzung) -->
+    <div class="language-selector">
+      <label for="language" id="language-label">Sprache:</label>
+      <select id="language" aria-label="Sprache auswählen">
+        <option value="de" selected>Deutsch</option>
+        <option value="en">English</option>
+      </select>
+    </div>
+
+    <!-- Übersetzungs-Sprachen: Ausgang / Ziel + Swap -->
+    <div class="translator-selector">
+      <div class="translator-row">
+        <label for="from-lang" id="from-label">Ausgangssprache:</label>
+        <select id="from-lang">
+          <option value="de">Deutsch</option>
+          <option value="en" selected>English</option>
+        </select>
+      </div>
+      <button type="button" id="swap-btn" class="swap-btn">⇄</button>
+      <div class="translator-row">
+        <label for="to-lang" id="to-label">Zielsprache:</label>
+        <select id="to-lang">
+          <option value="de" selected>Deutsch</option>
+          <option value="en">English</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Einlese-Modus -->
+    <div class="mode-selector">
+      <label for="read-mode" id="mode-label">Einlesemodus:</label>
+      <select id="read-mode" aria-label="Einlesemodus wählen">
+        <option value="document" selected>Ganzes Dokument</option>
+        <option value="pages">Seitenweise</option>
+        <option value="paragraphs">Abschnittsweise</option>
+      </select>
+    </div>
+
+    <!-- Drop Zone -->
+    <div class="drop-zone" id="drop-zone">
+      Ziehe deine Datei hierher oder klicke zum Auswählen
+    </div>
+
+    <!-- Upload-Form -->
+    <form id="uploadForm">
+      <input type="file" name="file" id="fileInput" required>
+      <button type="submit" id="upload-btn">📤 Hochladen</button>
+    </form>
+
+    <!-- Status -->
+    <div id="status"></div>
+
+    <!-- Download Link (Einzeldatei, weiterhin unterstützt) -->
+    <a id="download-link" href="#" download style="display:none;">📥 Datei herunterladen</a>
+
+    <!-- Mehrere Downloads -->
+    <div id="downloads" class="downloads" style="display:none;"></div>
+  </div>
+
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

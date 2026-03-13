@@ -1,0 +1,342 @@
+
+/* =========================
+   Global
+   ========================= */
+body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: linear-gradient(135deg, #ffb347, #ffd06b);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    margin: 0;
+}
+
+.container {
+    background: #fff;
+    padding: 40px 30px;
+    border-radius: 20px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+    text-align: center;
+    width: 400px;                /* minimal breiter für komfortable Selects */
+    max-width: 92%;
+    animation: fadeIn 0.8s ease-in-out;
+}
+
+/* =========================
+   Logo
+   ========================= */
+.logo {
+    width: 120px;
+    margin-bottom: 10px;
+}
+
+/* =========================
+   Titles
+   ========================= */
+h2 {
+    color: #ff7e00;
+    margin-bottom: 8px;
+    font-size: 24px;
+    font-weight: 700;
+}
+
+h4 {
+    color: #f5b473;
+    margin-bottom: 8px;
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.subtitle {
+    font-size: 15px;
+    color: #666;
+    margin-bottom: 25px;
+}
+
+/* =========================
+   Drop Zone
+   ========================= */
+.drop-zone {
+    border: 2px dashed #ff7e00;
+    border-radius: 12px;
+    padding: 30px;
+    margin-bottom: 20px;
+    cursor: pointer;
+    color: #555;
+    font-size: 15px;
+    transition: background-color 0.3s, border-color 0.3s, transform 0.2s;
+    min-height: 70px;            /* etwas mehr Höhe für mehrere Zeilen */
+}
+
+.drop-zone.dragover {
+    background-color: #fff4e6;
+    border-color: #e65c00;
+    transform: scale(1.02);
+}
+
+/* =========================
+   File Input
+   ========================= */
+input[type="file"] {
+    display: none;
+}
+
+/* =========================
+   Buttons
+   ========================= */
+button {
+    background: #0c0c0c;
+    color: #fff;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: bold;
+    transition: background 0.3s, transform 0.2s, box-shadow 0.2s;
+    margin-top: 10px;
+    box-shadow: 0 3px 0 rgba(0,0,0,0.12);
+}
+
+button:hover {
+    background: #e65c00;
+    transform: translateY(-1px) scale(1.05);
+}
+
+button:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(230, 92, 0, 0.35);
+}
+
+/* =========================
+   UI Sprachwahl (App-Sprache de/en)
+   ========================= */
+.language-selector {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;         /* etwas kompakter als vorher */
+    font-size: 15px;
+    color: #666;
+}
+
+.language-selector label {
+    font-weight: 600;
+    color: #333;
+    margin-right: 4px;           /* optischer Abstand zum Select */
+}
+
+.language-selector select {
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 2px solid #ff7e00;
+    background-color: #fff;
+    font-size: 14px;
+    font-weight: 500;
+    color: #333;
+    cursor: pointer;
+    transition: border-color 0.3s, box-shadow 0.3s, transform 0.15s;
+    box-shadow: 0 2px 0 rgba(0,0,0,0.05);
+}
+
+.language-selector select:hover {
+    border-color: #e65c00;
+    box-shadow: 0 0 8px rgba(230, 92, 0, 0.3);
+}
+
+.language-selector select:focus {
+    outline: none;
+    border-color: #e65c00;
+    box-shadow: 0 0 0 3px rgba(230, 92, 0, 0.20);
+}
+
+/* =========================
+   Übersetzungs-Selector (Ausgang/Ziel + Swap)
+   ========================= */
+
+/* Übersetzungs-Selector untereinander */
+.translator-selector {
+    display: flex;
+    flex-direction: column; /* statt Grid */
+    gap: 12px; /* Abstand zwischen den Elementen */
+    align-items: center; /* zentriert */
+    margin-bottom: 18px;
+}
+
+.translator-row {
+    display: flex;
+    flex-direction: column; /* Label über Select */
+    gap: 6px;
+    align-items: flex-start; /* Label linksbündig */
+    width: 100%; /* volle Breite */
+}
+
+.translator-row select {
+    width: 100%; /* Select nimmt volle Breite ein */
+    padding: 8px 12px;
+    border-radius: 10px;
+    border: 2px solid #ff7e00;
+    background-color: #fff;
+    font-size: 14px;
+    font-weight: 500;
+    color: #333;
+    cursor: pointer;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.swap-btn {
+    background: #0c0c0c;
+    color: #fff;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 18px;
+    font-weight: 700;
+    transition: background 0.3s, transform 0.15s;
+    box-shadow: 0 3px 0 rgba(0,0,0,0.12);
+    width: 100%; /* Button volle Breite */
+}
+.swap-btn:hover {
+    background: #e65c00;
+    transform: translateY(-1px) scale(1.05);
+}
+
+
+/* =========================
+   Status & Download-Link
+   ========================= */
+#status {
+    margin-top: 15px;
+    font-size: 14px;
+    color: #333;
+}
+
+#download-link {
+    margin-top: 18px;            /* kompakterer Abstand */
+    display: none;
+    color: #ff7e00;
+    font-weight: bold;
+    text-decoration: none;
+    font-size: 16px;
+    display: inline-block;
+    transition: color 0.3s;
+}
+
+#download-link:hover {
+    color: #e65c00;
+    text-decoration: underline;
+}
+
+/* =========================
+   Animations
+   ========================= */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0);    }
+}
+
+/* =========================
+   Responsive Tweaks
+   ========================= */
+@media (max-width: 360px) {
+    .translator-selector {
+        grid-template-columns: 1fr 1fr; /* bricht auf zwei Spalten */
+        gap: 10px;
+    }
+    .swap-btn {
+        grid-column: 1 / -1;     /* eigene Zeile mittig */
+        justify-self: center;
+    }
+    .container {
+        width: 95%;
+        padding: 32px 24px;      /* kompakter für sehr kleine Bildschirme */
+    }
+}
+
+
+/* =========================
+   Einlesemodus (read-mode)
+   ========================= */
+
+.mode-selector {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    align-items: flex-start;
+    width: 100%;
+    margin-bottom: 18px;      /* einheitlich mit translator-selector */
+}
+
+.mode-selector label {
+    font-weight: 600;
+    color: #333;
+    font-size: 15px;
+}
+
+.mode-selector select {
+    width: 100%;
+    padding: 8px 12px;
+    border-radius: 10px;
+    border: 2px solid #ff7e00;
+    background-color: #fff;
+    font-size: 14px;
+    font-weight: 500;
+    color: #333;
+    cursor: pointer;
+    transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
+    box-shadow: 0 2px 0 rgba(0,0,0,0.05);
+}
+
+.mode-selector select:hover {
+    border-color: #e65c00;
+    box-shadow: 0 0 8px rgba(230, 92, 0, 0.3);
+}
+
+.mode-selector select:focus {
+    outline: none;
+    border-color: #e65c00;
+    box-shadow: 0 0 0 3px rgba(230, 92, 0, 0.20);
+}
+
+
+/* =========================
+   Multi-Downloads (mehrere Dateien)
+   ========================= */
+
+#downloads {
+    margin-top: 18px;
+    padding: 10px 0;
+    display: none;              /* wird per JS sichtbar */
+    text-align: left;
+}
+
+#downloads div {
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 8px;
+}
+
+#downloads ol {
+    margin: 0;
+    padding-left: 20px;
+}
+
+#downloads li {
+    margin-bottom: 6px;
+}
+
+#downloads a {
+    color: #ff7e00;
+    font-weight: bold;
+    text-decoration: none;
+    font-size: 15px;
+    transition: color 0.25s;
+}
+
+#downloads a:hover {
+    color: #e65c00;
+    text-decoration: underline;
+}

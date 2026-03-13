@@ -1,0 +1,8 @@
+rabbitmq:
+  host: "localhost"
+
+queues:
+  - name: "tasks"
+    consumers: 2
+  - name: "logs"
+    consumers: 1
