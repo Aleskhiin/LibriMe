@@ -30,6 +30,10 @@ public class JobService {
         return jobRepository.save(job);
     }
 
+    public Job updateJob(Job job) {
+        return jobRepository.save(job);
+    }
+
     public Job updateJobStatus(UUID jobID, StatusType status) {
         Job existingJob = jobRepository.findByJobID(jobID);
         if (existingJob != null) {

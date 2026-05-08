@@ -14,13 +14,10 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class RabbitMQConfiguration {
     public static final String NEWQUEUE_NAME = "newjob.queue";
-    public static final String DONEQUEUE_NAME = "donejob.queue";
     
     public static final String EXCHANGE_NAME = "job.exchange";
-    // public static final String DONEEXCHANGE_NAME = "donejob.exchange";
-    
+
     public static final String NEWROUTING_KEY = "newjob.key";
-    public static final String DONEROUTING_KEY = "donejob.key";
     
 
 
@@ -28,11 +25,6 @@ public class RabbitMQConfiguration {
     public Queue newJobQueue() {
         return new Queue(NEWQUEUE_NAME, false);
     }
-    @Bean
-    public Queue doneJobQueue() {
-        return new Queue(DONEQUEUE_NAME, false);
-    }
-
 
     @Bean
     public Exchange exchange() {
@@ -50,12 +42,5 @@ public class RabbitMQConfiguration {
                 .bind(queue)
                 .to(exchange)
                 .with(NEWROUTING_KEY).noargs();
-    }
-    @Bean
-    public Binding doneBinding(@Qualifier("doneJobQueue") Queue queue, Exchange exchange) {
-        return BindingBuilder
-                .bind(queue)
-                .to(exchange)
-                .with(DONEROUTING_KEY).noargs();
     }
 }

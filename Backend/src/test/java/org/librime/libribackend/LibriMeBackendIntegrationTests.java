@@ -5,7 +5,6 @@ import org.junit.jupiter.api.Test;
 import org.librime.libribackend.DBAccess.JobService;
 import org.librime.libribackend.DBAccess.Model.Job;
 import org.librime.libribackend.MQHandler.MessageRecords.NewJobMessage;
-import org.librime.libribackend.MQHandler.MessageRecords.RunningJobMessage;
 import org.librime.libribackend.MQTest.RabbitMQTestHelper;
 import org.librime.libribackend.Types.LanguageType;
 import org.librime.libribackend.Types.SplittingType;
@@ -108,18 +107,6 @@ class LibriMeBackendIntegrationTests {
                 .expectStatus()
                 .isOk();
     }
-
-    @Test
-    void StatusUpdateViaRabbitMQTest() throws InterruptedException {
-        rabbitMQhelper.sendDoneMessage(new RunningJobMessage(UUID.fromString(dummyUUID), StatusType.RUNNING, 30, "/opt/librime/files/test/test.mp3"));
-        Thread.sleep(1000); //try more elegant later
-        Job job = jobService.getJobByJobId(UUID.fromString(dummyUUID));
-        assertThat(job.getStatus()).isEqualTo(StatusType.RUNNING);
-        assertThat(job.getProgress()).isEqualTo(30);
-    }
-
-
-
 //    @Test
 //    void RabbitMQshouldSendAndConsumeMessageTest() throws Exception {
 //        // given

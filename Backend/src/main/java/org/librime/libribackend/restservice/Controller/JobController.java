@@ -50,10 +50,9 @@ public class JobController {
                             @RequestParam("fileLanguage") LanguageType fileLanguage,
                             @RequestParam("translationLanguage") LanguageType translationLanguage,
                             @RequestParam("voiceID") VoiceType voiceType,
-                            @RequestParam("splittingID") SplittingType splittingType ) throws IOException {
+                            @RequestParam("splittingID") SplittingType splittingType ){
         UUID uuid = UUID.randomUUID();
         String fileName = multipartFile.getOriginalFilename();
-        //String filePath = System.getProperty("user.dir")+"/librime/files/"+ uuid + File.separator + fileName;
         String filePath = "/opt/librime/files/"+ uuid + File.separator + fileName;
 
         log.info("Received file: {} and input language type: {} and output language type: {} and voice type: {}. creating job {}",
@@ -77,9 +76,28 @@ public class JobController {
     }
 
     @GetMapping("/jobs/{jobID}")
-    public ResponseEntity<JobRecord>  statusJob(@PathVariable UUID jobID) {
-        log.info("Received status request for job ID: {}", jobID);
+    public ResponseEntity<JobRecord>  updateJob(@PathVariable UUID jobID){
+        log.info("Received update request for job ID: {}", jobID);
         Job job = jobService.getJobByJobId(jobID);
+        return new ResponseEntity<>(new StatusJobRecord(job.getJobID(), job.getStatus(), job.getProgress(), "/jobs/"+jobID+"/result", ""), HttpStatus.OK);
+    }
+
+    @PutMapping("/jobs/{jobID}")
+    public ResponseEntity<JobRecord>  statusJob(@PathVariable UUID jobID,
+                                                @RequestParam("status") StatusType status,
+                                                @RequestParam("progress") int progress,
+                                                @RequestParam("outputFilePath") String OutputFilePath
+    ) {
+        log.info("Received status request for job ID: {}", jobID);
+
+        Job job = jobService.getJobByJobId(jobID);
+
+        job.setStatus(status);
+        job.setProgress(progress);
+        job.setOutputFilePath(OutputFilePath);
+
+        jobService.updateJob(job);
+
         return new ResponseEntity<>(new StatusJobRecord(job.getJobID(), job.getStatus(), job.getProgress(), "/jobs/"+jobID+"/result", ""), HttpStatus.OK);
     }
 
@@ -96,16 +114,4 @@ public class JobController {
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + resource.getFilename() + "\"")
                 .body(resource);
     }
-//    @CrossOrigin
-//    public ResponseEntity<byte[]> getJobResult(@PathVariable UUID jobID) throws IOException {
-//        log.info("Received result request for job ID: {}", jobID);
-//
-//        File file = new File(getClass().getResource("test.mp3").getFile());
-//        byte[] fileContent = Files.readAllBytes(file.toPath());
-//        int numBytes = fileContent.length;
-//
-//        return ResponseEntity.status(HttpStatus.OK).contentType(MediaType.parseMediaType("audio/mpeg"))
-//                .header("Accept-Ranges", "bytes")
-//                .body(Arrays.copyOfRange(fileContent, 0, numBytes));
-//    }
 }
