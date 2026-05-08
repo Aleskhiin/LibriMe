@@ -2,8 +2,8 @@ package org.librime.libribackend;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.librime.libribackend.DBAccess.JobService;
-import org.librime.libribackend.DBAccess.Model.Job;
+import org.librime.libribackend.DB.JobService;
+import org.librime.libribackend.DB.Model.Job;
 import org.librime.libribackend.MQHandler.MessageRecords.NewJobMessage;
 import org.librime.libribackend.MQTest.RabbitMQTestHelper;
 import org.librime.libribackend.Types.LanguageType;

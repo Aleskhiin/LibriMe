@@ -14,16 +14,12 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class RabbitMQConfiguration {
     public static final String NEWQUEUE_NAME = "newjob.queue";
-    
     public static final String EXCHANGE_NAME = "job.exchange";
-
     public static final String NEWROUTING_KEY = "newjob.key";
-    
-
 
     @Bean
     public Queue newJobQueue() {
-        return new Queue(NEWQUEUE_NAME, false);
+        return new Queue(NEWQUEUE_NAME, true);
     }
 
     @Bean

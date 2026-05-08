@@ -2,7 +2,6 @@ package org.librime.libribackend.MQTest;
 
 import org.librime.libribackend.MQHandler.Configuration.RabbitMQConfiguration;
 import org.librime.libribackend.MQHandler.MessageRecords.JobMessage;
-import org.librime.libribackend.restservice.Controller.JobController;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
@@ -18,8 +17,6 @@ public class RabbitMQTestHelper {
 
     @Autowired
     private RabbitTemplate rabbitTemplate;
-
-    private static final Logger log = LoggerFactory.getLogger(RabbitMQTestHelper.class);
 
     private final BlockingQueue<JobMessage> messages = new LinkedBlockingQueue<>();
 
@@ -37,15 +34,6 @@ public class RabbitMQTestHelper {
             channel.queuePurge(RabbitMQConfiguration.NEWQUEUE_NAME);
             return null;
         });
-    }
-
-    public void sendDoneMessage(JobMessage message) {
-        rabbitTemplate.convertAndSend(
-                RabbitMQConfiguration.EXCHANGE_NAME,
-                RabbitMQConfiguration.DONEROUTING_KEY,
-                message
-        );
-        log.info("Sent done message to queue");
     }
 }
 

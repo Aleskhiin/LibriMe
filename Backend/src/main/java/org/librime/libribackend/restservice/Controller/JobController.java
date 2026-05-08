@@ -1,7 +1,7 @@
 package org.librime.libribackend.restservice.Controller;
 
-import org.librime.libribackend.DBAccess.JobService;
-import org.librime.libribackend.DBAccess.Model.Job;
+import org.librime.libribackend.DB.JobService;
+import org.librime.libribackend.DB.Model.Job;
 import org.librime.libribackend.MQHandler.MessageRecords.NewJobMessage;
 import org.librime.libribackend.MQHandler.RabbitMQPublisher;
 import org.librime.libribackend.Types.LanguageType;
@@ -24,7 +24,6 @@ import org.springframework.core.io.UrlResource;
 import org.springframework.http.MediaType;
 
 import java.io.File;
-import java.io.IOException;
 import java.net.MalformedURLException;
 import java.nio.file.Path;
 import java.nio.file.Paths;

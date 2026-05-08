@@ -1,6 +1,6 @@
-package org.librime.libribackend.DBAccess.Repository;
+package org.librime.libribackend.DB.Repository;
 
-import org.librime.libribackend.DBAccess.Model.Job;
+import org.librime.libribackend.DB.Model.Job;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
