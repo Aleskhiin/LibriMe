@@ -1,4 +1,4 @@
-package org.librime.libribackend.DBAccess.Model;
+package org.librime.libribackend.DB.Model;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
