@@ -17,10 +17,11 @@ Start to use LibriMe for your daily learning routine because **"Freedom starts i
 ## Meet the team
 | Name                     | Role                                                     |
 |--------------------------|----------------------------------------------------------|
-| Florian Fuchs            | AI module development & standalone Flask version         |
-| Dominik Bliem-Zupansky   | Assisted in AI module development & standalone Flask version & Documentation |
-| Vladimir Tsankov         | Assisted in backend development                          |
-| Philip Macheiner         | Backend development & project management                 |
+| Florian Fuchs            | Projektmanager & Co. AI Module Developer                 |
+| Dominik Bliem-Zupansky   | Frontend Developer & Head of Marketing                   |
+| Georg Maier              | AI Module Developer & Assistant Documentation Manager    |
+| Stefan Aldrian           | Head of Documentation & Assistant Marketing Manager      |
+| Philip Macheiner         | Backend development & Assistant Projectmanager           |
 
 
 ---
