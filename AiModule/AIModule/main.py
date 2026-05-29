@@ -17,7 +17,7 @@ if __name__ == "__main__":
     config_path = os.path.join(os.path.dirname(__file__), "app_pkg", "Resources", "config.yaml")
     config = load_config(config_path)
 
-    host = config["rabbitmq"]["host"]
+    host = os.environ.get("RABBITMQ_HOST") or config["rabbitmq"]["host"]
     num_workers = config["rabbitmq"].get("num_workers", 2)
 
     connector = RabbitMQConnector(host=host)
