@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
 
   flask:
@@ -23,3 +21,31 @@ services:
       - "8000:8000"
     volumes:
       - .:/app
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: librime-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  ai-module:
+    build:
+      context: .
+      dockerfile: Dockerfile.rabbitmq
+    container_name: librime-ai-module
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      RABBITMQ_HOST: rabbitmq
+    volumes:
+      - librime-files:/opt/librime/files
+
+volumes:
+  librime-files:

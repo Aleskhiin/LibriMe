@@ -1,7 +1,7 @@
-package org.librime.libribackend.DBAccess;
+package org.librime.libribackend.DB;
 
-import org.librime.libribackend.DBAccess.Model.Job;
-import org.librime.libribackend.DBAccess.Repository.JobRepository;
+import org.librime.libribackend.DB.Model.Job;
+import org.librime.libribackend.DB.Repository.JobRepository;
 import org.librime.libribackend.Types.StatusType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -27,6 +27,10 @@ public class JobService {
     }
 
     public Job createJob(Job job) {
+        return jobRepository.save(job);
+    }
+
+    public Job updateJob(Job job) {
         return jobRepository.save(job);
     }
 
