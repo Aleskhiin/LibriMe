@@ -1,0 +1,55 @@
+
+FROM python:3.10-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PHONEMIZER_ESPEAK_LIBRARY=/usr/lib/x86_64-linux-gnu/libespeakng.so.1 \
+    TTS_HOME=/root/.local/share/tts
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ffmpeg git \
+    espeak-ng libespeak-ng1 \
+    tesseract-ocr libtesseract-dev \
+    locales \
+  && sed -i 's/# *de_AT.UTF-8 UTF-8/de_AT.UTF-8 UTF-8/' /etc/locale.gen \
+  && sed -i 's/# *de_DE.UTF-8 UTF-8/de_DE.UTF-8 UTF-8/' /etc/locale.gen \
+  && sed -i 's/# *en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen \
+  && locale-gen \
+  && rm -rf /var/lib/apt/lists/*
+
+ENV LANG=de_AT.UTF-8 \
+    LANGUAGE=de_AT:de:en \
+    LC_ALL=de_AT.UTF-8
+
+COPY requirements.txt /app/requirements.txt
+
+RUN --mount=type=cache,target=/root/.cache/pip \
+    python -m pip install --upgrade pip \
+ && python -m pip install -r /app/requirements.txt
+
+RUN --mount=type=cache,target=/root/.cache/pip \
+    python -m pip install "TTS>=0.22.0"
+
+RUN mkdir -p /app/models/ljspeech /app/models/thorsten
+
+RUN tts --model_name "tts_models/de/thorsten/tacotron2-DDC" \
+        --text "Test" \
+        --out_path /app/test_de.wav && \
+    tts --model_name "tts_models/en/ljspeech/tacotron2-DDC" \
+        --text "Test" \
+        --out_path /app/test_en.wav && \
+    find "$TTS_HOME" -type f -path "*/tts_models/*/en/*/ljspeech/*/tacotron2-DDC/*" \
+        \( -name "*.pth" -o -name "config.json" \) -exec cp -v {} /app/models/ljspeech/ \; && \
+    find "$TTS_HOME" -type f -path "*/tts_models/*/de/*/thorsten/*/tacotron2-DDC/*" \
+        \( -name "*.pth" -o -name "config.json" \) -exec cp -v {} /app/models/thorsten/ \; && \
+    find "$TTS_HOME" -type f -path "*/vocoder_models/*/de/*/thorsten/*/hifigan_v1/*" \
+        \( -name "*.pth" -o -name "config.json" \) -exec cp -v {} /app/models/thorsten/ \;
+
+COPY . /app
+
+ENV PYTHONPATH=/app
+
+CMD ["python3", "main.py"]

@@ -1,25 +1,22 @@
+import json
 import pika
 
 
 class RabbitMQProducer:
-    def __init__(self, connector, queue_name):
+    EXCHANGE = "job.exchange"
+    ROUTING_KEY = "donejob.key"
+
+    def __init__(self, connector):
         self.connection = connector.create_connection()
         self.channel = self.connection.channel()
-        self.queue_name = queue_name
-        self.channel.queue_declare(queue=self.queue_name, durable=True)
 
-    def publish(self, message):
+    def publish(self, message: dict):
         self.channel.basic_publish(
-            exchange='',
-            routing_key=self.queue_name,
-            body=message,
-            properties=pika.BasicProperties(delivery_mode=2)
+            exchange=self.EXCHANGE,
+            routing_key=self.ROUTING_KEY,
+            body=json.dumps(message),
+            properties=pika.BasicProperties(delivery_mode=2),
         )
-        print(f"[x] Sent: {message}")
 
     def close(self):
         self.connection.close()
-
-
-
-
