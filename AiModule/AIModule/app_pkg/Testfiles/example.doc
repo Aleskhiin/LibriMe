@@ -1,0 +1,13 @@
+Word Processing Test Document
+
+This document is used to test
+DOC, DOCX and ODT readers.
+
+Section 1
+The reader should extract paragraphs.
+
+Section 2
+LibreOffice conversion should work correctly.
+
+Section 3
+Text extraction completed successfully.

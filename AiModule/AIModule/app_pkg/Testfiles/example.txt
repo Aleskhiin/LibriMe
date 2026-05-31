@@ -1,0 +1,10 @@
+Hello World
+
+This is a simple text document.
+
+The document reader should be able to read
+all lines and paragraphs correctly.
+
+Line 1
+Line 2
+Line 3
