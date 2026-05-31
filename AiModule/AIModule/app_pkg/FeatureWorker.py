@@ -1,11 +1,12 @@
 import asyncio
 import os
+import queue
 from typing import List, Dict, Any
 
-from app_pkg.Features.OCRFeature import OCRFeature
 from app_pkg.Features.Readers.DocumentReaderFactory import DocumentReaderFactory
 from app_pkg.Features.TextToSpeechFeature import TextToSpeechFeature
 from app_pkg.Features.TranslatorFeature import TranslatorFeature
+from app_pkg.FeatureWorkerThread import FeatureWorkerThread
 from app_pkg.Logger.Logging_setup import logger
 
 
@@ -14,17 +15,21 @@ class FeatureWorker:
     Coordinates the complete processing workflow.
 
     Depending on the input file type, this worker:
-    - extracts text from images via OCR
+    - extracts text from images via ImageReaderFactory
     - extracts text from documents via DocumentReaderFactory
     - optionally translates the extracted text
     - generates speech audio from the final text
+
+    In addition, this class can optionally process tasks in background
+    threads using a task queue.
     """
 
     def __init__(
         self,
         tts_output_dir: str = "./output",
         from_lang: str = "de",
-        to_lang: str = "en"
+        to_lang: str = "en",
+        thread_count: int = 0
     ):
         """
         Initializes all required feature modules once.
@@ -33,13 +38,12 @@ class FeatureWorker:
             tts_output_dir: Directory where generated audio files are stored.
             from_lang: Source language for optional translation.
             to_lang: Target language for optional translation and TTS.
+            thread_count: Number of background worker threads.
+                If 0, no background threads are started automatically.
         """
 
         # Text-to-speech feature for audio generation
         self.tts = TextToSpeechFeature(output_dir=tts_output_dir)
-
-        # OCR feature for image-based text extraction
-        self.ocr = OCRFeature()
 
         # Translator feature for optional language translation
         self.translator = TranslatorFeature()
@@ -47,6 +51,103 @@ class FeatureWorker:
         # Language configuration
         self.from_lang = from_lang
         self.to_lang = to_lang
+
+        # Queue support for optional background processing
+        self.task_queue: queue.Queue = queue.Queue()
+        self.threads: List[FeatureWorkerThread] = []
+        self.thread_count = thread_count
+
+    # ------------------------------------------------------------------
+    # Queue / thread handling
+    # ------------------------------------------------------------------
+
+    def start_threads(self) -> None:
+        """
+        Starts all configured background worker threads.
+
+        This method is only needed if tasks should be processed through
+        the internal queue.
+        """
+
+        if self.thread_count <= 0:
+            logger.info("No background worker threads configured.")
+            return
+
+        if self.threads:
+            logger.warning("Background worker threads are already running.")
+            return
+
+        for worker_id in range(1, self.thread_count + 1):
+            thread = FeatureWorkerThread(
+                task_queue=self.task_queue,
+                worker_id=worker_id
+            )
+
+            thread.start()
+            self.threads.append(thread)
+
+            logger.info(f"Started FeatureWorkerThread with id={worker_id}.")
+
+    def enqueue(
+        self,
+        input_file: str,
+        ref_audio: str = None,
+        filename: str = "result",
+        read_mode: str = "document",
+        page_numbers: List[int] | None = None
+    ) -> None:
+        """
+        Adds a file-processing task to the queue.
+
+        Args:
+            input_file: Path to the input file.
+            ref_audio: Optional reference audio path. Currently kept for compatibility.
+            filename: Base filename for generated audio output.
+            read_mode: Document reading mode.
+            page_numbers: Optional page or slide indexes.
+        """
+
+        self.task_queue.put((
+            self.run,
+            (),
+            {
+                "input_file": input_file,
+                "ref_audio": ref_audio,
+                "filename": filename,
+                "read_mode": read_mode,
+                "page_numbers": page_numbers
+            }
+        ))
+
+        logger.info(f"Queued processing task for file: {input_file}")
+
+    def wait_until_done(self) -> None:
+        """
+        Blocks until all queued tasks are completed.
+        """
+
+        self.task_queue.join()
+
+    def stop_threads(self) -> None:
+        """
+        Stops all background worker threads.
+
+        Threads stop after their current task or after their queue timeout.
+        """
+
+        for thread in self.threads:
+            thread.stop()
+
+        for thread in self.threads:
+            thread.join(timeout=2)
+
+        self.threads.clear()
+
+        logger.info("Stopped all background worker threads.")
+
+    # ------------------------------------------------------------------
+    # Main processing workflow
+    # ------------------------------------------------------------------
 
     async def run(
         self,
@@ -60,9 +161,8 @@ class FeatureWorker:
         Runs the complete workflow for a given input file.
 
         Supported inputs:
-        - Images: .png, .jpg, .jpeg
-        - Documents: .pdf, .txt, .md, .doc, .docx, .odt, .ppt, .pptx,
-          .html, .csv, .json
+        - Images: all extensions supported by ImageReaderFactory
+        - Documents: all extensions supported by DocumentReaderFactory
 
         Args:
             input_file: Path to the input file.
@@ -82,31 +182,15 @@ class FeatureWorker:
         # Extract file extension and normalize it
         ext = os.path.splitext(input_file)[1].lower()
 
-        # Image files are handled via OCR
-        if ext in [".png", ".jpg", ".jpeg"]:
+        # Image files are handled via ImageReaderFactory
+        if ext in ImageReaderFactory.supported_extensions():
             return await self._process_image(
                 input_file=input_file,
                 filename=filename
             )
 
-        # All supported document formats are handled via DocumentReaderFactory
-        supported_document_types = {
-            ".pdf",
-            ".txt",
-            ".md",
-            ".markdown",
-            ".doc",
-            ".docx",
-            ".odt",
-            ".ppt",
-            ".pptx",
-            ".html",
-            ".htm",
-            ".csv",
-            ".json",
-        }
-
-        if ext in supported_document_types:
+        # Document files are handled via DocumentReaderFactory
+        if ext in DocumentReaderFactory.supported_extensions():
             return await self._process_document(
                 input_file=input_file,
                 filename=filename,
@@ -127,7 +211,7 @@ class FeatureWorker:
         Processes image files.
 
         The image workflow is:
-        image -> OCR -> optional translation -> TTS -> audio file
+        image -> ImageReaderFactory -> OCRImageReader -> optional translation -> TTS
 
         Args:
             input_file: Path to the image file.
@@ -139,11 +223,16 @@ class FeatureWorker:
 
         logger.info("Start extracting text out of the image.")
 
-        # Configure OCR with the selected image path
-        self.ocr.configure(picture_file_path=input_file)
+        # Create the correct image reader based on the file extension.
+        reader = ImageReaderFactory.create_reader(input_file)
 
-        # OCRFeature.process() is asynchronous
-        text: str = await self.ocr.process()
+        # Configure the image reader with the selected image path.
+        reader.configure(
+            file_path=input_file
+        )
+
+        # Execute image reader processing asynchronously.
+        text: str = await reader.process()
 
         logger.info("Finish extracting text out of the image.")
 
@@ -198,11 +287,10 @@ class FeatureWorker:
             f"'{input_file}' with read_mode='{mode}'."
         )
 
-        # Create the correct reader based on the file extension
+        # Create the correct document reader based on the file extension
         reader = DocumentReaderFactory.create_reader(input_file)
 
-        # Configure the selected reader.
-        # page_numbers are used by readers that support page/slide selection.
+        # Configure the selected document reader
         reader.configure(
             file_path=input_file,
             reader_mode=mode,
@@ -279,6 +367,10 @@ class FeatureWorker:
             "texts": chunks,
             "audios": audio_files
         }
+
+    # ------------------------------------------------------------------
+    # Helper methods
+    # ------------------------------------------------------------------
 
     def _normalize_to_text(self, result) -> str:
         """
@@ -380,27 +472,21 @@ class FeatureWorker:
         logger.info("Successfully generated the audio file.")
 
         return audio_path
-    
+
+
 # -------------------------------------------------------------------------
 # Example usage
 # -------------------------------------------------------------------------
 
 async def main():
     """
-    Demonstrates the usage of FeatureWorker with all supported file types.
+    Demonstrates direct and queued usage of FeatureWorker.
 
-    The examples cover:
-    - Image OCR processing
-    - PDF document processing
-    - PDF page-based processing
-    - PDF paragraph-based processing
-    - Word documents (.docx/.doc)
-    - OpenDocument files (.odt)
-    - Presentations (.pptx/.ppt)
-    - Markdown files
-    - HTML files
-    - CSV files
-    - JSON files
+    This test covers:
+    - all supported image formats through ImageReaderFactory
+    - all supported document formats through DocumentReaderFactory
+    - direct async processing
+    - queued background processing with FeatureWorkerThread
     """
 
     parent_dir = os.path.dirname(
@@ -415,16 +501,15 @@ async def main():
         "Resources"
     )
 
+    image_dir = os.path.join(
+        resources_dir,
+        "Images"
+    )
+
     testfiles_dir = os.path.join(
         parent_dir,
         "app_pkg",
         "Testfiles"
-    )
-
-    image_path = os.path.join(
-        resources_dir,
-        "Images",
-        "lord_of _the _ring.png"
     )
 
     ref_audio = os.path.join(
@@ -440,132 +525,167 @@ async def main():
     )
 
     # ------------------------------------------------------------------
-    # Image -> OCR -> Translation -> TTS
+    # Test all supported image formats
     # ------------------------------------------------------------------
 
-    try:
-        result_img = await worker.run(
-            input_file=image_path,
-            ref_audio=ref_audio,
-            filename="from_image",
-            read_mode="document"
+    test_images = [
+        "example.png",
+        "example.jpg",
+        "example.jpeg",
+        "example.bmp",
+        "example.tif",
+        "example.tiff",
+        "example.webp",
+        "lord_of _the _ring.png",
+    ]
+
+    for image_file in test_images:
+        image_path = os.path.join(
+            image_dir,
+            image_file
         )
 
-        print("\n=== IMAGE RESULT ===")
-        print(result_img)
+        if not os.path.exists(image_path):
+            print(
+                f"\nSkipping image: "
+                f"file does not exist ({image_path})"
+            )
+            continue
 
-    except Exception as ex:
-        print(f"Image test failed: {ex}")
+        try:
+            result = await worker.run(
+                input_file=image_path,
+                ref_audio=ref_audio,
+                filename=f"image_{os.path.splitext(image_file)[0]}",
+                read_mode="document"
+            )
+
+            print(f"\n=== IMAGE RESULT: {image_file.upper()} ===")
+            print(result)
+
+        except Exception as ex:
+            print(
+                f"\nImage test failed for {image_file}:"
+                f"\n{ex}"
+            )
 
     # ------------------------------------------------------------------
     # Test all supported document formats
     # ------------------------------------------------------------------
 
     test_documents = [
-
-        # PDF
         (
             "PDF Document",
-            os.path.join(testfiles_dir, "Fuchs_HA8.pdf"),
+            "Fuchs_HA8.pdf",
             "pdf_document",
-            "document"
+            "document",
+            None
         ),
-
         (
             "PDF Pages",
-            os.path.join(testfiles_dir, "Fuchs_HA8.pdf"),
+            "Fuchs_HA8.pdf",
             "pdf_pages",
-            "pages"
+            "pages",
+            [0, 1]
         ),
-
         (
             "PDF Paragraphs",
-            os.path.join(testfiles_dir, "Fuchs_HA8.pdf"),
+            "Fuchs_HA8.pdf",
             "pdf_paragraphs",
-            "paragraphs"
+            "paragraphs",
+            None
         ),
-
-        # Word
         (
-            "DOCX Document",
-            os.path.join(testfiles_dir, "example.docx"),
-            "docx_document",
-            "document"
+            "TXT Document",
+            "example.txt",
+            "txt_document",
+            "document",
+            None
         ),
-
-        (
-            "DOC Document",
-            os.path.join(testfiles_dir, "example.doc"),
-            "doc_document",
-            "document"
-        ),
-
-        # OpenDocument
-        (
-            "ODT Document",
-            os.path.join(testfiles_dir, "example.odt"),
-            "odt_document",
-            "document"
-        ),
-
-        # Presentations
-        (
-            "PPTX Presentation",
-            os.path.join(testfiles_dir, "example.pptx"),
-            "pptx_document",
-            "document"
-        ),
-
-        (
-            "PPT Presentation",
-            os.path.join(testfiles_dir, "example.ppt"),
-            "ppt_document",
-            "document"
-        ),
-
-        # Markdown
         (
             "Markdown Document",
-            os.path.join(testfiles_dir, "example.md"),
+            "example.md",
             "markdown_document",
-            "document"
+            "document",
+            None
         ),
-
-        # HTML
+        (
+            "DOCX Document",
+            "example.docx",
+            "docx_document",
+            "document",
+            None
+        ),
+        (
+            "DOC Document",
+            "example.doc",
+            "doc_document",
+            "document",
+            None
+        ),
+        (
+            "ODT Document",
+            "example.odt",
+            "odt_document",
+            "document",
+            None
+        ),
+        (
+            "PPTX Presentation",
+            "example.pptx",
+            "pptx_document",
+            "document",
+            None
+        ),
+        (
+            "PPTX Slides",
+            "example.pptx",
+            "pptx_pages",
+            "pages",
+            [0, 1]
+        ),
+        (
+            "PPT Presentation",
+            "example.ppt",
+            "ppt_document",
+            "document",
+            None
+        ),
         (
             "HTML Document",
-            os.path.join(testfiles_dir, "example.html"),
+            "example.html",
             "html_document",
-            "document"
+            "document",
+            None
         ),
-
-        # CSV
         (
             "CSV Document",
-            os.path.join(testfiles_dir, "example.csv"),
+            "example.csv",
             "csv_document",
-            "document"
+            "document",
+            None
         ),
-
-        # JSON
         (
             "JSON Document",
-            os.path.join(testfiles_dir, "example.json"),
+            "example.json",
             "json_document",
-            "document"
+            "document",
+            None
         ),
     ]
 
-    # ------------------------------------------------------------------
-    # Execute all document tests
-    # ------------------------------------------------------------------
-
     for (
         description,
-        file_path,
+        file_name,
         output_name,
-        read_mode
+        read_mode,
+        page_numbers
     ) in test_documents:
+
+        file_path = os.path.join(
+            testfiles_dir,
+            file_name
+        )
 
         if not os.path.exists(file_path):
             print(
@@ -579,7 +699,8 @@ async def main():
                 input_file=file_path,
                 ref_audio=ref_audio,
                 filename=output_name,
-                read_mode=read_mode
+                read_mode=read_mode,
+                page_numbers=page_numbers
             )
 
             print(f"\n=== {description.upper()} ===")
@@ -590,6 +711,65 @@ async def main():
                 f"\n{description} test failed:"
                 f"\n{ex}"
             )
+
+    # ------------------------------------------------------------------
+    # Test queued background processing
+    # ------------------------------------------------------------------
+
+    queued_worker = FeatureWorker(
+        tts_output_dir="./tts_output",
+        from_lang="en",
+        to_lang="de",
+        thread_count=2
+    )
+
+    queued_worker.start_threads()
+
+    queued_tests = [
+        (
+            os.path.join(image_dir, "lord_of _the _ring.png"),
+            "queued_image",
+            "document",
+            None
+        ),
+        (
+            os.path.join(testfiles_dir, "Fuchs_HA8.pdf"),
+            "queued_pdf",
+            "document",
+            None
+        ),
+        (
+            os.path.join(testfiles_dir, "example.docx"),
+            "queued_docx",
+            "document",
+            None
+        ),
+        (
+            os.path.join(testfiles_dir, "example.pptx"),
+            "queued_pptx",
+            "pages",
+            [0, 1]
+        ),
+    ]
+
+    for file_path, output_name, read_mode, page_numbers in queued_tests:
+        if not os.path.exists(file_path):
+            print(
+                f"\nSkipping queued task: "
+                f"file does not exist ({file_path})"
+            )
+            continue
+
+        queued_worker.enqueue(
+            input_file=file_path,
+            ref_audio=ref_audio,
+            filename=output_name,
+            read_mode=read_mode,
+            page_numbers=page_numbers
+        )
+
+    queued_worker.wait_until_done()
+    queued_worker.stop_threads()
 
 
 # -------------------------------------------------------------------------
