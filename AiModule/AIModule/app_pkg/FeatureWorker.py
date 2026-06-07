@@ -1,183 +1,780 @@
 import asyncio
 import os
-from typing import Union, List, Dict, Any
+import queue
+from typing import List, Dict, Any
 
-from app_pkg.Features.OCRFeature import OCRFeature
-from app_pkg.Features.PDFReaderFeature import PDFReaderFeature
+from app_pkg.Features.Readers.DocumentReaderFactory import DocumentReaderFactory
 from app_pkg.Features.TextToSpeechFeature import TextToSpeechFeature
 from app_pkg.Features.TranslatorFeature import TranslatorFeature
+from app_pkg.FeatureWorkerThread import FeatureWorkerThread
 from app_pkg.Logger.Logging_setup import logger
 
 
 class FeatureWorker:
-    def __init__(self, tts_output_dir: str = "./output", from_lang: str = "de", to_lang: str = "en"):
-        # TTS, OCR, Translator einmalig anlegen
+    """
+    Coordinates the complete processing workflow.
+
+    Depending on the input file type, this worker:
+    - extracts text from images via ImageReaderFactory
+    - extracts text from documents via DocumentReaderFactory
+    - optionally translates the extracted text
+    - generates speech audio from the final text
+
+    In addition, this class can optionally process tasks in background
+    threads using a task queue.
+    """
+
+    def __init__(
+        self,
+        tts_output_dir: str = "./output",
+        from_lang: str = "de",
+        to_lang: str = "en",
+        thread_count: int = 0
+    ):
+        """
+        Initializes all required feature modules once.
+
+        Args:
+            tts_output_dir: Directory where generated audio files are stored.
+            from_lang: Source language for optional translation.
+            to_lang: Target language for optional translation and TTS.
+            thread_count: Number of background worker threads.
+                If 0, no background threads are started automatically.
+        """
+
+        # Text-to-speech feature for audio generation
         self.tts = TextToSpeechFeature(output_dir=tts_output_dir)
-        self.ocr = OCRFeature()
+
+        # Translator feature for optional language translation
         self.translator = TranslatorFeature()
+
+        # Language configuration
         self.from_lang = from_lang
         self.to_lang = to_lang
+
+        # Queue support for optional background processing
+        self.task_queue: queue.Queue = queue.Queue()
+        self.threads: List[FeatureWorkerThread] = []
+        self.thread_count = thread_count
+
+    # ------------------------------------------------------------------
+    # Queue / thread handling
+    # ------------------------------------------------------------------
+
+    def start_threads(self) -> None:
+        """
+        Starts all configured background worker threads.
+
+        This method is only needed if tasks should be processed through
+        the internal queue.
+        """
+
+        if self.thread_count <= 0:
+            logger.info("No background worker threads configured.")
+            return
+
+        if self.threads:
+            logger.warning("Background worker threads are already running.")
+            return
+
+        for worker_id in range(1, self.thread_count + 1):
+            thread = FeatureWorkerThread(
+                task_queue=self.task_queue,
+                worker_id=worker_id
+            )
+
+            thread.start()
+            self.threads.append(thread)
+
+            logger.info(f"Started FeatureWorkerThread with id={worker_id}.")
+
+    def enqueue(
+        self,
+        input_file: str,
+        ref_audio: str = None,
+        filename: str = "result",
+        read_mode: str = "document",
+        page_numbers: List[int] | None = None
+    ) -> None:
+        """
+        Adds a file-processing task to the queue.
+
+        Args:
+            input_file: Path to the input file.
+            ref_audio: Optional reference audio path. Currently kept for compatibility.
+            filename: Base filename for generated audio output.
+            read_mode: Document reading mode.
+            page_numbers: Optional page or slide indexes.
+        """
+
+        self.task_queue.put((
+            self.run,
+            (),
+            {
+                "input_file": input_file,
+                "ref_audio": ref_audio,
+                "filename": filename,
+                "read_mode": read_mode,
+                "page_numbers": page_numbers
+            }
+        ))
+
+        logger.info(f"Queued processing task for file: {input_file}")
+
+    def wait_until_done(self) -> None:
+        """
+        Blocks until all queued tasks are completed.
+        """
+
+        self.task_queue.join()
+
+    def stop_threads(self) -> None:
+        """
+        Stops all background worker threads.
+
+        Threads stop after their current task or after their queue timeout.
+        """
+
+        for thread in self.threads:
+            thread.stop()
+
+        for thread in self.threads:
+            thread.join(timeout=2)
+
+        self.threads.clear()
+
+        logger.info("Stopped all background worker threads.")
+
+    # ------------------------------------------------------------------
+    # Main processing workflow
+    # ------------------------------------------------------------------
 
     async def run(
         self,
         input_file: str,
         ref_audio: str = None,
         filename: str = "result",
-        read_mode: str = "document",  # <--- NEU: nur für PDFs relevant
+        read_mode: str = "document",
+        page_numbers: List[int] | None = None
     ) -> Dict[str, Any]:
         """
-        Entscheidet automatisch, ob OCR oder PDFReader genutzt wird,
-        übersetzt optional und generiert Audio.
-        Für PDFs steuert 'read_mode' das Chunking:
-          - 'document'   -> ein Gesamt-Text  -> eine MP3
-          - 'pages'      -> Liste pro Seite  -> mehrere MP3s
-          - 'paragraphs' -> Liste pro Absatz -> mehrere MP3s
+        Runs the complete workflow for a given input file.
+
+        Supported inputs:
+        - Images: all extensions supported by ImageReaderFactory
+        - Documents: all extensions supported by DocumentReaderFactory
+
+        Args:
+            input_file: Path to the input file.
+            ref_audio: Optional reference audio path. Currently not used here,
+                but kept for compatibility with previous calls.
+            filename: Base filename for generated audio output.
+            read_mode: Defines how documents should be read:
+                - "document": whole document as one text
+                - "pages": page-/slide-based chunks, if supported
+                - "paragraphs": paragraph-based chunks
+            page_numbers: Optional list of 0-based page or slide indexes.
+
+        Returns:
+            Dictionary containing extracted text and generated audio path(s).
         """
+
+        # Extract file extension and normalize it
         ext = os.path.splitext(input_file)[1].lower()
 
-        # --- Bild -> OCR -> ein Text ---
-        if ext in [".png", ".jpg", ".jpeg"]:
-            logger.info("Start extracting text out of the image.")
-            self.ocr.configure(picture_file_path=input_file)
-            text: str = await self.ocr.process()
-            logger.info("Finish extracting text out of the image.")
+        # Image files are handled via ImageReaderFactory
+        if ext in ImageReaderFactory.supported_extensions():
+            return await self._process_image(
+                input_file=input_file,
+                filename=filename
+            )
 
-            # Optional: Übersetzung
+        # Document files are handled via DocumentReaderFactory
+        if ext in DocumentReaderFactory.supported_extensions():
+            return await self._process_document(
+                input_file=input_file,
+                filename=filename,
+                read_mode=read_mode,
+                page_numbers=page_numbers
+            )
+
+        # If the file type is unknown, fail explicitly
+        logger.error(f"Unsupported file type: {ext}")
+        raise ValueError(f"Unsupported file type: {ext}")
+
+    async def _process_image(
+        self,
+        input_file: str,
+        filename: str
+    ) -> Dict[str, Any]:
+        """
+        Processes image files.
+
+        The image workflow is:
+        image -> ImageReaderFactory -> OCRImageReader -> optional translation -> TTS
+
+        Args:
+            input_file: Path to the image file.
+            filename: Base filename for the generated audio file.
+
+        Returns:
+            Dictionary with extracted text and generated audio path.
+        """
+
+        logger.info("Start extracting text out of the image.")
+
+        # Create the correct image reader based on the file extension.
+        reader = ImageReaderFactory.create_reader(input_file)
+
+        # Configure the image reader with the selected image path.
+        reader.configure(
+            file_path=input_file
+        )
+
+        # Execute image reader processing asynchronously.
+        text: str = await reader.process()
+
+        logger.info("Finish extracting text out of the image.")
+
+        # Translate only if source and target language differ
+        text = self._maybe_translate(text)
+
+        # Generate one audio file for the complete OCR result
+        audio_path = self._tts_single(
+            text=text,
+            filename=filename
+        )
+
+        return {
+            "text": text,
+            "audio": audio_path
+        }
+
+    async def _process_document(
+        self,
+        input_file: str,
+        filename: str,
+        read_mode: str,
+        page_numbers: List[int] | None = None
+    ) -> Dict[str, Any]:
+        """
+        Processes document files through the generic reader system.
+
+        The document workflow is:
+        document -> DocumentReaderFactory -> optional translation -> TTS
+
+        Args:
+            input_file: Path to the document file.
+            filename: Base filename for generated audio files.
+            read_mode: Reading mode for the document.
+            page_numbers: Optional list of 0-based page/slide indexes.
+
+        Returns:
+            Dictionary with either:
+            - one text and one audio file for "document" mode
+            - multiple text chunks and audio files for chunked modes
+        """
+
+        # Validate read mode and fallback to document mode if invalid
+        mode = read_mode if read_mode in {
+            "document",
+            "pages",
+            "paragraphs"
+        } else "document"
+
+        logger.info(
+            f"Start extracting text out of document "
+            f"'{input_file}' with read_mode='{mode}'."
+        )
+
+        # Create the correct document reader based on the file extension
+        reader = DocumentReaderFactory.create_reader(input_file)
+
+        # Configure the selected document reader
+        reader.configure(
+            file_path=input_file,
+            reader_mode=mode,
+            page_numbers=page_numbers
+        )
+
+        # Execute the reader asynchronously via BaseFeature interface
+        result = await reader.process()
+
+        logger.info("Finish extracting text out of document.")
+
+        # In document mode, all content becomes one audio file
+        if mode == "document":
+            text = self._normalize_to_text(result)
+
+            # Optional translation of the complete document text
             text = self._maybe_translate(text)
 
-            # TTS Einzeldatei
-            audio_path = self._tts_single(text=text, filename=filename)
-            return {"text": text, "audio": audio_path}
+            # Generate one audio file
+            audio_path = self._tts_single(
+                text=text,
+                filename=filename
+            )
 
-        # --- PDF -> PDFReader ---
-        elif ext == ".pdf":
-            mode = read_mode if read_mode in {"document", "pages", "paragraphs"} else "document"
-            logger.info(f"Start extracting text out of the pdf with read_mode='{mode}'.")
-            pdf_reader = PDFReaderFeature()
-            pdf_reader.configure(pdf_file_path=input_file, reader_mode=mode)
-            pdf_result = await pdf_reader.process()
-            logger.info("Finish extracting text out of the pdf.")
+            return {
+                "text": text,
+                "audio": audio_path
+            }
 
-            # Fall A: document -> String -> Einzeldatei
-            if mode == "document":
-                if isinstance(pdf_result, list):
-                    # Defensive: Falls der Reader unerwartet eine Liste liefert, joinen wir sauber.
-                    text = "\n\n".join([str(x) for x in pdf_result if x])
-                else:
-                    text = str(pdf_result or "")
+        # In pages/paragraphs mode, content is handled as chunks
+        chunks = self._normalize_to_chunks(result)
 
-                # Optional: Übersetzung
-                text = self._maybe_translate(text)
+        if not chunks:
+            raise ValueError(
+                "Document reader returned no content for the selected read_mode."
+            )
 
-                # TTS Einzeldatei
-                audio_path = self._tts_single(text=text, filename=filename)
-                return {"text": text, "audio": audio_path}
+        # Translate each chunk separately if needed
+        if self.from_lang != self.to_lang:
+            logger.info(
+                f"Start translation per chunk from "
+                f"{self.from_lang} to {self.to_lang}."
+            )
 
-            # Fall B: pages/paragraphs -> Liste -> Mehrfachdatei
-            else:
-                # Erwartet: Liste von Text-Chunks
-                chunks: List[str] = pdf_result if isinstance(pdf_result, list) else [str(pdf_result or "")]
-                # Vorab säubern
-                chunks = [c for c in (str(x or "") for x in chunks) if c.strip()]
+            translated_chunks: List[str] = []
 
-                if not chunks:
-                    raise ValueError("PDF reader returned no content for the selected read_mode.")
+            for chunk in chunks:
+                self.translator.configure(
+                    self.from_lang,
+                    self.to_lang,
+                    chunk
+                )
 
-                # Optional: pro Chunk übersetzen
-                if self.from_lang != self.to_lang:
-                    logger.info(f"Start translation per chunk from {self.from_lang} to {self.to_lang}.")
-                    translated: List[str] = []
-                    for idx, c in enumerate(chunks, start=1):
-                        self.translator.configure(self.from_lang, self.to_lang, c)
-                        translated.append(self.translator.process())
-                    chunks = translated
-                    logger.info("Finish translation per chunk.")
+                translated_chunks.append(self.translator.process())
 
-                # Pro Chunk eine Datei erzeugen: Dateinamen deterministisch suffixen
-                audio_files: List[str] = []
-                for i, c in enumerate(chunks, start=1):
-                    # suffix anhand Modus
-                    suffix = f"_p{i}" if mode == "pages" else f"_seg{i}"
-                    audio_files.append(self._tts_single(text=c, filename=f"{filename}{suffix}"))
+            chunks = translated_chunks
 
-                return {"texts": chunks, "audios": audio_files}
+            logger.info("Finish translation per chunk.")
 
-        else:
-            logger.error(f"Unsupported file type: {ext}")
-            raise ValueError(f"Unsupported file type: {ext}")
+        # Generate one audio file per chunk
+        audio_files: List[str] = []
 
-    # ------------------- Hilfsmethoden -------------------
+        for i, chunk in enumerate(chunks, start=1):
+            suffix = self._build_chunk_suffix(mode, i)
+
+            audio_files.append(
+                self._tts_single(
+                    text=chunk,
+                    filename=f"{filename}{suffix}"
+                )
+            )
+
+        return {
+            "texts": chunks,
+            "audios": audio_files
+        }
+
+    # ------------------------------------------------------------------
+    # Helper methods
+    # ------------------------------------------------------------------
+
+    def _normalize_to_text(self, result) -> str:
+        """
+        Converts a reader result into a single text string.
+
+        Some readers may return a list in special cases.
+        This method defensively joins list values into one text.
+        """
+
+        if isinstance(result, list):
+            return "\n\n".join(
+                str(item)
+                for item in result
+                if str(item).strip()
+            )
+
+        return str(result or "")
+
+    def _normalize_to_chunks(self, result) -> List[str]:
+        """
+        Converts a reader result into a clean list of text chunks.
+
+        Used for page-based, slide-based, or paragraph-based processing.
+        """
+
+        if isinstance(result, list):
+            return [
+                str(item).strip()
+                for item in result
+                if str(item).strip()
+            ]
+
+        text = str(result or "").strip()
+
+        if not text:
+            return []
+
+        return [text]
+
+    def _build_chunk_suffix(self, mode: str, index: int) -> str:
+        """
+        Creates deterministic filename suffixes for generated audio chunks.
+
+        Examples:
+        - pages mode: _p1, _p2, ...
+        - paragraphs mode: _seg1, _seg2, ...
+        """
+
+        if mode == "pages":
+            return f"_p{index}"
+
+        if mode == "paragraphs":
+            return f"_seg{index}"
+
+        return f"_part{index}"
 
     def _maybe_translate(self, text: str) -> str:
-        """Übersetzt den Text, wenn from_lang != to_lang."""
+        """
+        Translates text only when source and target languages differ.
+        """
+
         if self.from_lang != self.to_lang:
-            logger.info(f"Start translation of the text from {self.from_lang} to {self.to_lang}.")
-            self.translator.configure(self.from_lang, self.to_lang, text)
+            logger.info(
+                f"Start translation of the text from "
+                f"{self.from_lang} to {self.to_lang}."
+            )
+
+            self.translator.configure(
+                self.from_lang,
+                self.to_lang,
+                text
+            )
+
             text = self.translator.process()
+
             logger.info("Finish translation of the text.")
+
         return text
 
     def _tts_single(self, text: str, filename: str) -> str:
-        """Erzeugt genau eine Audio-Datei mit TTS und liefert deren Pfad."""
+        """
+        Generates exactly one audio file for a given text.
+        """
+
         logger.info("Start to configure audio generation module.")
+
         self.tts.configure(
             gen_text=text,
             filename=filename,
             output_dir=self.tts.output_dir,
             language=self.to_lang
         )
+
         logger.info("Finish to configure audio generation module.")
         logger.info("Start to generate the audio file.")
+
         audio_path = self.tts.process()
+
         logger.info("Successfully generated the audio file.")
+
         return audio_path
 
 
-# Beispiel-Nutzung
+# -------------------------------------------------------------------------
+# Example usage
+# -------------------------------------------------------------------------
+
 async def main():
-    parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    image_path = os.path.join(parent_dir, "app_pkg", "Resources", "Images", "lord_of _the _ring.png")
-    pdf_path = os.path.join(parent_dir, "app_pkg", "Testfiles", "Fuchs_HA8.pdf")
-    ref_audio = os.path.join(parent_dir, "app_pkg", "Resources", "Audio", "unbenannt.wav")
+    """
+    Demonstrates direct and queued usage of FeatureWorker.
 
-    worker = FeatureWorker(tts_output_dir="./tts_output", from_lang="en", to_lang="de")
+    This test covers:
+    - all supported image formats through ImageReaderFactory
+    - all supported document formats through DocumentReaderFactory
+    - direct async processing
+    - queued background processing with FeatureWorkerThread
+    """
 
-    # Bild -> OCR -> TTS (ein File)
-    result_img = await worker.run(
-        input_file=image_path,
-        ref_audio=ref_audio,
-        filename="from_image",
-        read_mode="document"  # irrelevant bei Bildern
+    parent_dir = os.path.dirname(
+        os.path.dirname(
+            os.path.abspath(__file__)
+        )
     )
-    print("Bild-Ergebnis:", result_img)
 
-    # PDF -> gesamtes Dokument -> TTS (ein File)
-    result_pdf_doc = await worker.run(
-        input_file=pdf_path,
-        ref_audio=ref_audio,
-        filename="from_pdf_doc",
-        read_mode="document"
+    resources_dir = os.path.join(
+        parent_dir,
+        "app_pkg",
+        "Resources"
     )
-    print("PDF (document)-Ergebnis:", result_pdf_doc)
 
-    # PDF -> seitenweise -> TTS (mehrere Files)
-    result_pdf_pages = await worker.run(
-        input_file=pdf_path,
-        ref_audio=ref_audio,
-        filename="from_pdf_pages",
-        read_mode="pages"
+    image_dir = os.path.join(
+        resources_dir,
+        "Images"
     )
-    print("PDF (pages)-Ergebnis:", result_pdf_pages)
 
-    # PDF -> absatzweise -> TTS (mehrere Files)
-    result_pdf_par = await worker.run(
-        input_file=pdf_path,
-        ref_audio=ref_audio,
-        filename="from_pdf_paragraphs",
-        read_mode="paragraphs"
+    testfiles_dir = os.path.join(
+        parent_dir,
+        "app_pkg",
+        "Testfiles"
     )
-    print("PDF (paragraphs)-Ergebnis:", result_pdf_par)
 
+    ref_audio = os.path.join(
+        resources_dir,
+        "Audio",
+        "unbenannt.wav"
+    )
+
+    worker = FeatureWorker(
+        tts_output_dir="./tts_output",
+        from_lang="en",
+        to_lang="de"
+    )
+
+    # ------------------------------------------------------------------
+    # Test all supported image formats
+    # ------------------------------------------------------------------
+
+    test_images = [
+        "example.png",
+        "example.jpg",
+        "example.jpeg",
+        "example.bmp",
+        "example.tif",
+        "example.tiff",
+        "example.webp",
+        "lord_of _the _ring.png",
+    ]
+
+    for image_file in test_images:
+        image_path = os.path.join(
+            image_dir,
+            image_file
+        )
+
+        if not os.path.exists(image_path):
+            print(
+                f"\nSkipping image: "
+                f"file does not exist ({image_path})"
+            )
+            continue
+
+        try:
+            result = await worker.run(
+                input_file=image_path,
+                ref_audio=ref_audio,
+                filename=f"image_{os.path.splitext(image_file)[0]}",
+                read_mode="document"
+            )
+
+            print(f"\n=== IMAGE RESULT: {image_file.upper()} ===")
+            print(result)
+
+        except Exception as ex:
+            print(
+                f"\nImage test failed for {image_file}:"
+                f"\n{ex}"
+            )
+
+    # ------------------------------------------------------------------
+    # Test all supported document formats
+    # ------------------------------------------------------------------
+
+    test_documents = [
+        (
+            "PDF Document",
+            "Fuchs_HA8.pdf",
+            "pdf_document",
+            "document",
+            None
+        ),
+        (
+            "PDF Pages",
+            "Fuchs_HA8.pdf",
+            "pdf_pages",
+            "pages",
+            [0, 1]
+        ),
+        (
+            "PDF Paragraphs",
+            "Fuchs_HA8.pdf",
+            "pdf_paragraphs",
+            "paragraphs",
+            None
+        ),
+        (
+            "TXT Document",
+            "example.txt",
+            "txt_document",
+            "document",
+            None
+        ),
+        (
+            "Markdown Document",
+            "example.md",
+            "markdown_document",
+            "document",
+            None
+        ),
+        (
+            "DOCX Document",
+            "example.docx",
+            "docx_document",
+            "document",
+            None
+        ),
+        (
+            "DOC Document",
+            "example.doc",
+            "doc_document",
+            "document",
+            None
+        ),
+        (
+            "ODT Document",
+            "example.odt",
+            "odt_document",
+            "document",
+            None
+        ),
+        (
+            "PPTX Presentation",
+            "example.pptx",
+            "pptx_document",
+            "document",
+            None
+        ),
+        (
+            "PPTX Slides",
+            "example.pptx",
+            "pptx_pages",
+            "pages",
+            [0, 1]
+        ),
+        (
+            "PPT Presentation",
+            "example.ppt",
+            "ppt_document",
+            "document",
+            None
+        ),
+        (
+            "HTML Document",
+            "example.html",
+            "html_document",
+            "document",
+            None
+        ),
+        (
+            "CSV Document",
+            "example.csv",
+            "csv_document",
+            "document",
+            None
+        ),
+        (
+            "JSON Document",
+            "example.json",
+            "json_document",
+            "document",
+            None
+        ),
+    ]
+
+    for (
+        description,
+        file_name,
+        output_name,
+        read_mode,
+        page_numbers
+    ) in test_documents:
+
+        file_path = os.path.join(
+            testfiles_dir,
+            file_name
+        )
+
+        if not os.path.exists(file_path):
+            print(
+                f"\nSkipping {description}: "
+                f"file does not exist ({file_path})"
+            )
+            continue
+
+        try:
+            result = await worker.run(
+                input_file=file_path,
+                ref_audio=ref_audio,
+                filename=output_name,
+                read_mode=read_mode,
+                page_numbers=page_numbers
+            )
+
+            print(f"\n=== {description.upper()} ===")
+            print(result)
+
+        except Exception as ex:
+            print(
+                f"\n{description} test failed:"
+                f"\n{ex}"
+            )
+
+    # ------------------------------------------------------------------
+    # Test queued background processing
+    # ------------------------------------------------------------------
+
+    queued_worker = FeatureWorker(
+        tts_output_dir="./tts_output",
+        from_lang="en",
+        to_lang="de",
+        thread_count=2
+    )
+
+    queued_worker.start_threads()
+
+    queued_tests = [
+        (
+            os.path.join(image_dir, "lord_of _the _ring.png"),
+            "queued_image",
+            "document",
+            None
+        ),
+        (
+            os.path.join(testfiles_dir, "Fuchs_HA8.pdf"),
+            "queued_pdf",
+            "document",
+            None
+        ),
+        (
+            os.path.join(testfiles_dir, "example.docx"),
+            "queued_docx",
+            "document",
+            None
+        ),
+        (
+            os.path.join(testfiles_dir, "example.pptx"),
+            "queued_pptx",
+            "pages",
+            [0, 1]
+        ),
+    ]
+
+    for file_path, output_name, read_mode, page_numbers in queued_tests:
+        if not os.path.exists(file_path):
+            print(
+                f"\nSkipping queued task: "
+                f"file does not exist ({file_path})"
+            )
+            continue
+
+        queued_worker.enqueue(
+            input_file=file_path,
+            ref_audio=ref_audio,
+            filename=output_name,
+            read_mode=read_mode,
+            page_numbers=page_numbers
+        )
+
+    queued_worker.wait_until_done()
+    queued_worker.stop_threads()
+
+
+# -------------------------------------------------------------------------
+# Application entry point
+# -------------------------------------------------------------------------
 
 if __name__ == "__main__":
     asyncio.run(main())
