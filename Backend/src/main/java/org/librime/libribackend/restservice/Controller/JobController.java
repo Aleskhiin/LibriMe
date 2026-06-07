@@ -3,7 +3,7 @@ package org.librime.libribackend.restservice.Controller;
 import org.librime.libribackend.DB.JobService;
 import org.librime.libribackend.DB.Model.Job;
 import org.librime.libribackend.MQHandler.MessageRecords.NewJobMessage;
-import org.librime.libribackend.MQHandler.RabbitMQPublisher;
+import org.librime.libribackend.MQHandler.MessagePublisher;
 import org.librime.libribackend.Storage.StorageService;
 import org.librime.libribackend.Types.LanguageType;
 import org.librime.libribackend.Types.SplittingType;
@@ -34,15 +34,15 @@ import java.util.stream.Collectors;
 public class JobController {
 
     private final JobService jobService;
-    private final RabbitMQPublisher rabbitMQPublisher;
+    private final MessagePublisher messagePublisher;
     private final StorageService storageService;
 
     private static final Logger log = LoggerFactory.getLogger(JobController.class);
 
     @Autowired
-    public JobController(JobService jobService, RabbitMQPublisher rabbitMQPublisher, StorageService storageService) {
+    public JobController(JobService jobService, MessagePublisher messagePublisher, StorageService storageService) {
         this.jobService = jobService;
-        this.rabbitMQPublisher = rabbitMQPublisher;
+        this.messagePublisher = messagePublisher;
         this.storageService = storageService;
     }
 
@@ -80,7 +80,7 @@ public class JobController {
         Job job = new Job(uuid, filePath, voiceType, splittingType, fileLanguage, translationLanguage, StatusType.QUEUED);
         job.setUserId(userId);
         jobService.createJob(job);
-        rabbitMQPublisher.sendMessage(new NewJobMessage(uuid, fileLanguage, translationLanguage, voiceType, filePath, splittingType));
+        messagePublisher.sendMessage(new NewJobMessage(uuid, fileLanguage, translationLanguage, voiceType, filePath, splittingType));
 
         return new ResponseEntity<>(new NewJobRecord(uuid, StatusType.QUEUED, "queued file:"+multipartFile.getOriginalFilename(), "/jobs/"+uuid), HttpStatus.ACCEPTED);
     }
