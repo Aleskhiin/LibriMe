@@ -22,6 +22,7 @@ public class SecurityConfig {
         http.csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/health").permitAll()
                         .requestMatchers(HttpMethod.PUT, "/jobs/**").permitAll() // Allow worker updates
                         .anyRequest().authenticated()
                 )
