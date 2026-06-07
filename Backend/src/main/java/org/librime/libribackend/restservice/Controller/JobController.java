@@ -22,12 +22,15 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.io.File;
 import java.net.MalformedURLException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/")
@@ -44,6 +47,21 @@ public class JobController {
     JobController(){
     }
 
+    private String getCurrentUserId() {
+        return (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+    }
+
+    @GetMapping("/jobs")
+    public ResponseEntity<List<JobRecord>> getAllJobs() {
+        String userId = getCurrentUserId();
+        log.info("Received request for all jobs for user: {}", userId);
+        List<Job> jobs = jobService.getJobsByUserId(userId);
+        List<JobRecord> jobRecords = jobs.stream()
+                .map(job -> new StatusJobRecord(job.getJobID(), job.getStatus(), job.getProgress(), "/jobs/"+job.getJobID()+"/result", ""))
+                .collect(Collectors.toList());
+        return new ResponseEntity<>(jobRecords, HttpStatus.OK);
+    }
+
     @PostMapping("/jobs")
     public ResponseEntity<JobRecord> newJob(@RequestParam("file") MultipartFile multipartFile,
                             @RequestParam("fileLanguage") LanguageType fileLanguage,
@@ -51,11 +69,12 @@ public class JobController {
                             @RequestParam("voiceID") VoiceType voiceType,
                             @RequestParam("splittingID") SplittingType splittingType ){
         UUID uuid = UUID.randomUUID();
+        String userId = getCurrentUserId();
         String fileName = multipartFile.getOriginalFilename();
         String filePath = "/opt/librime/files/"+ uuid + File.separator + fileName;
 
-        log.info("Received file: {} and input language type: {} and output language type: {} and voice type: {}. creating job {}",
-                fileName, fileLanguage, translationLanguage, voiceType, uuid);
+        log.info("Received file: {} and input language type: {} and output language type: {} and voice type: {}. creating job {} for user {}",
+                fileName, fileLanguage, translationLanguage, voiceType, uuid, userId);
 
         try {
             File file = new File(filePath);
@@ -68,7 +87,9 @@ public class JobController {
         }
 
         log.info("file: {} transfered to {} ",fileName, filePath);
-        jobService.createJob(new Job(uuid, filePath, voiceType, splittingType, fileLanguage, translationLanguage, StatusType.QUEUED));
+        Job job = new Job(uuid, filePath, voiceType, splittingType, fileLanguage, translationLanguage, StatusType.QUEUED);
+        job.setUserId(userId);
+        jobService.createJob(job);
         rabbitMQPublisher.sendMessage(new NewJobMessage(uuid, fileLanguage, translationLanguage, voiceType, filePath, splittingType));
 
         return new ResponseEntity<>(new NewJobRecord(uuid, StatusType.QUEUED, "queued file:"+multipartFile.getOriginalFilename(), "/jobs/"+uuid), HttpStatus.ACCEPTED);
@@ -76,8 +97,14 @@ public class JobController {
 
     @GetMapping("/jobs/{jobID}")
     public ResponseEntity<JobRecord>  updateJob(@PathVariable UUID jobID){
-        log.info("Received update request for job ID: {}", jobID);
+        log.info("Received status request for job ID: {}", jobID);
         Job job = jobService.getJobByJobId(jobID);
+        if (job == null) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
+        if (!job.getUserId().equals(getCurrentUserId())) {
+            return new ResponseEntity<>(HttpStatus.FORBIDDEN);
+        }
         return new ResponseEntity<>(new StatusJobRecord(job.getJobID(), job.getStatus(), job.getProgress(), "/jobs/"+jobID+"/result", ""), HttpStatus.OK);
     }
 
@@ -87,7 +114,7 @@ public class JobController {
                                                 @RequestParam("progress") int progress,
                                                 @RequestParam("outputFilePath") String OutputFilePath
     ) {
-        log.info("Received status request for job ID: {}", jobID);
+        log.info("Received update request for job ID: {}", jobID);
 
         Job job = jobService.getJobByJobId(jobID);
 
@@ -104,6 +131,12 @@ public class JobController {
     public ResponseEntity<Resource> result(@PathVariable UUID jobID) throws MalformedURLException {
         log.info("Received result request for job ID: {}", jobID);
         Job job = jobService.getJobByJobId(jobID);
+        if (job == null) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
+        if (!job.getUserId().equals(getCurrentUserId())) {
+            return new ResponseEntity<>(HttpStatus.FORBIDDEN);
+        }
         Path path = Paths.get(job.getOutputFilePath());
         // Load the resource
         Resource resource = new UrlResource(path.toUri());

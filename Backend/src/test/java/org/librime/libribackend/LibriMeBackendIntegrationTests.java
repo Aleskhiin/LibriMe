@@ -15,7 +15,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.client.MultipartBodyBuilder;
+import org.springframework.http.ResponseCookie;
 import org.springframework.test.web.reactive.server.WebTestClient;
+import org.springframework.test.web.reactive.server.FluxExchangeResult;
 import org.springframework.web.reactive.function.BodyInserters;
 
 import java.io.File;
@@ -44,25 +46,28 @@ class LibriMeBackendIntegrationTests {
     @BeforeEach
     void beforeEach() throws IOException, InterruptedException {
         rabbitMQhelper.purgeQueue();
-        createNullJob();
     }
 
-    void createNullJob() throws IOException, InterruptedException {
-        if(jobService.hasJobByJobId(UUID.fromString(dummyUUID))){
-            jobService.updateJobStatus(UUID.fromString(dummyUUID), StatusType.QUEUED);
-            jobService.updateJobProgress(UUID.fromString(dummyUUID), 0);
-        }else{
-            //String filePath = System.getProperty("user.dir")+"/librime/files/test/";
-            String filePath = "/opt/librime/files/test/";
-            File file = new File(filePath);
-            file.mkdirs();
+    private ResponseCookie getSessionCookie() {
+        return webClient.get().uri("/jobs")
+                .exchange()
+                .returnResult(Object.class)
+                .getResponseCookies()
+                .getFirst("libri_jwt");
+    }
 
-            jobService.createJob(new Job(UUID.fromString(dummyUUID), filePath+"test.pdf", VoiceType.male_v1, SplittingType.DOCUMENT, LanguageType.en_US, LanguageType.en_US, StatusType.QUEUED));
-            Files.copy(Paths.get(System.getProperty("user.dir"),"src/test/resources/test.mp3"), Paths.get(filePath, "test.mp3"), StandardCopyOption.REPLACE_EXISTING);
-            Files.copy(Paths.get(System.getProperty("user.dir"),"src/test/resources/test.pdf"), Paths.get(filePath, "test.pdf"), StandardCopyOption.REPLACE_EXISTING);
-            Thread.sleep(1000); //try more elegant later
-            jobService.updateJobResultPath(UUID.fromString(dummyUUID), filePath+"test.mp3");
-        }
+    void createJobForUser(UUID jobId, String userId) throws IOException {
+        String filePath = "/opt/librime/files/test/";
+        File file = new File(filePath);
+        file.mkdirs();
+
+        Job job = new Job(jobId, filePath+"test.pdf", VoiceType.male_v1, SplittingType.DOCUMENT, LanguageType.en_US, LanguageType.en_US, StatusType.QUEUED);
+        job.setUserId(userId);
+        jobService.createJob(job);
+        
+        Files.copy(Paths.get(System.getProperty("user.dir"),"src/test/resources/test.mp3"), Paths.get(filePath, "test.mp3"), StandardCopyOption.REPLACE_EXISTING);
+        Files.copy(Paths.get(System.getProperty("user.dir"),"src/test/resources/test.pdf"), Paths.get(filePath, "test.pdf"), StandardCopyOption.REPLACE_EXISTING);
+        jobService.updateJobResultPath(jobId, filePath+"test.mp3");
     }
 
     @Test
@@ -92,21 +97,107 @@ class LibriMeBackendIntegrationTests {
     }
 
     @Test
-    void GetJobStatusTest() {
-        webClient.get().uri("/jobs/"+dummyUUID)
+    void GetJobStatusTest() throws IOException {
+        // 1. Get a session
+        ResponseCookie cookie = getSessionCookie();
+        // We need the userId from the token to associate the job, but we can't easily parse it.
+        // Instead, we'll create a job via the API or just rely on the fact that 
+        // a job created via API will be owned by the user.
+        
+        // For this test, let's just upload a job and then check its status.
+        MultipartBodyBuilder builder = new MultipartBodyBuilder();
+        builder.part("file", new ClassPathResource("test.pdf"));
+        builder.part("fileLanguage", "en_US");
+        builder.part("translationLanguage", "en_US");
+        builder.part("voiceID", "male_v1");
+        builder.part("splittingID", "DOCUMENT");
+
+        NewJobRecord newJob = webClient.post().uri("/jobs")
+                .cookie(cookie.getName(), cookie.getValue())
+                .body(BodyInserters.fromMultipartData(builder.build()))
+                .exchange()
+                .expectStatus().isAccepted()
+                .expectBody(NewJobRecord.class)
+                .returnResult().getResponseBody();
+
+        assertThat(newJob).isNotNull();
+
+        webClient.get().uri("/jobs/"+newJob.jobID())
+                .cookie(cookie.getName(), cookie.getValue())
                 .exchange()
                 .expectStatus()
                 .isOk();
     }
 
     @Test
-    void  GetJobResultTest() {
-        webClient.get().uri("/jobs/"+dummyUUID+"/result")
+    void  GetJobResultTest() throws IOException {
+        // 1. Get a session
+        ResponseCookie cookie = getSessionCookie();
+
+        // 2. Upload a job
+        MultipartBodyBuilder builder = new MultipartBodyBuilder();
+        builder.part("file", new ClassPathResource("test.pdf"));
+        builder.part("fileLanguage", "en_US");
+        builder.part("translationLanguage", "en_US");
+        builder.part("voiceID", "male_v1");
+        builder.part("splittingID", "DOCUMENT");
+
+        NewJobRecord newJob = webClient.post().uri("/jobs")
+                .cookie(cookie.getName(), cookie.getValue())
+                .body(BodyInserters.fromMultipartData(builder.build()))
+                .exchange()
+                .expectStatus().isAccepted()
+                .expectBody(NewJobRecord.class)
+                .returnResult().getResponseBody();
+
+        assertThat(newJob).isNotNull();
+        
+        // 3. Manually set a result path in DB so we can download it
+        Job job = jobService.getJobByJobId(newJob.jobID());
+        String filePath = "/opt/librime/files/test/test.mp3";
+        new File("/opt/librime/files/test/").mkdirs();
+        Files.copy(Paths.get(System.getProperty("user.dir"),"src/test/resources/test.mp3"), Paths.get(filePath), StandardCopyOption.REPLACE_EXISTING);
+        job.setOutputFilePath(filePath);
+        jobService.updateJob(job);
+
+        webClient.get().uri("/jobs/"+newJob.jobID()+"/result")
+                .cookie(cookie.getName(), cookie.getValue())
                 .exchange()
                 .expectHeader().contentType("audio/mpeg")
                 .expectStatus()
                 .isOk();
     }
+
+    @Test
+    void ForbiddenAccessTest() throws IOException {
+        // User A uploads a job
+        ResponseCookie cookieA = getSessionCookie();
+        
+        MultipartBodyBuilder builder = new MultipartBodyBuilder();
+        builder.part("file", new ClassPathResource("test.pdf"));
+        builder.part("fileLanguage", "en_US");
+        builder.part("translationLanguage", "en_US");
+        builder.part("voiceID", "male_v1");
+        builder.part("splittingID", "DOCUMENT");
+
+        NewJobRecord jobA = webClient.post().uri("/jobs")
+                .cookie(cookieA.getName(), cookieA.getValue())
+                .body(BodyInserters.fromMultipartData(builder.build()))
+                .exchange()
+                .expectStatus().isAccepted()
+                .expectBody(NewJobRecord.class)
+                .returnResult().getResponseBody();
+
+        // User B tries to access it
+        ResponseCookie cookieB = getSessionCookie();
+        
+        webClient.get().uri("/jobs/"+jobA.jobID())
+                .cookie(cookieB.getName(), cookieB.getValue())
+                .exchange()
+                .expectStatus()
+                .isForbidden();
+    }
+
 //    @Test
 //    void RabbitMQshouldSendAndConsumeMessageTest() throws Exception {
 //        // given
