@@ -1,5 +1,6 @@
 package org.librime.libribackend.Storage;
 
+import org.librime.libribackend.Exception.StorageException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.Resource;
@@ -35,7 +36,7 @@ public class LocalStorageService implements StorageService {
             return filePath.toString();
         } catch (IOException e) {
             log.error("Failed to store file {}: {}", fileName, e.getMessage());
-            throw new RuntimeException("Could not store file", e);
+            throw new StorageException("Could not store file", e);
         }
     }
 
@@ -44,7 +45,7 @@ public class LocalStorageService implements StorageService {
         try {
             return Files.newInputStream(Paths.get(filePath));
         } catch (IOException e) {
-            throw new RuntimeException("Could not read file stream", e);
+            throw new StorageException("Could not read file stream", e);
         }
     }
 
@@ -53,7 +54,7 @@ public class LocalStorageService implements StorageService {
         try {
             return new UrlResource(Paths.get(filePath).toUri());
         } catch (Exception e) {
-            throw new RuntimeException("Could not read file", e);
+            throw new StorageException("Could not read file", e);
         }
     }
 
