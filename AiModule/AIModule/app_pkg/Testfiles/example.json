@@ -1,0 +1,15 @@
+{
+  "company": "Example Corporation",
+  "employees": [
+    {
+      "id": 1,
+      "name": "Alice"
+    },
+    {
+      "id": 2,
+      "name": "Bob"
+    }
+  ],
+  "active": true,
+  "country": "Austria"
+}
