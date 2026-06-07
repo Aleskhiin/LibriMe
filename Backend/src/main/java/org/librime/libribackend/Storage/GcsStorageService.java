@@ -9,9 +9,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.core.io.Resource;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
+import java.io.InputStream;
+import java.nio.channels.Channels;
 import java.util.UUID;
 
 public class GcsStorageService implements StorageService {
@@ -42,15 +42,8 @@ public class GcsStorageService implements StorageService {
     }
 
     @Override
-    public File getFile(String filePath) {
-        try {
-            // For GCS, we download to a temporary file because the internal logic expects a File
-            File tempFile = File.createTempFile("gcs-download-", ".tmp");
-            storage.get(BlobId.of(bucketName, filePath)).downloadTo(tempFile.toPath());
-            return tempFile;
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to download file from GCS", e);
-        }
+    public InputStream getInputStream(String filePath) {
+        return Channels.newInputStream(storage.reader(BlobId.of(bucketName, filePath)));
     }
 
     @Override

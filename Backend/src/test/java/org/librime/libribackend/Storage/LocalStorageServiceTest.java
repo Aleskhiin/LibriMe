@@ -6,8 +6,9 @@ import org.junit.jupiter.api.io.TempDir;
 import org.springframework.core.io.Resource;
 import org.springframework.mock.web.MockMultipartFile;
 
-import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.UUID;
@@ -38,11 +39,11 @@ class LocalStorageServiceTest {
         String savedPath = storageService.storeFile(mockFile, jobId);
 
         // Then
-        File storedFile = new File(savedPath);
+        Path storedFile = Path.of(savedPath);
         assertThat(storedFile).exists();
-        assertThat(storedFile.getName()).isEqualTo(fileName);
-        assertThat(storedFile.getParentFile().getName()).isEqualTo(jobId.toString());
-        assertThat(Files.readString(Path.of(savedPath))).isEqualTo(content);
+        assertThat(storedFile.getFileName().toString()).isEqualTo(fileName);
+        assertThat(storedFile.getParent().getFileName().toString()).isEqualTo(jobId.toString());
+        assertThat(Files.readString(storedFile)).isEqualTo(content);
     }
 
     @Test
@@ -63,15 +64,20 @@ class LocalStorageServiceTest {
     }
 
     @Test
-    void getFile_ShouldReturnFileObject() {
+    void getInputStream_ShouldReturnValidStream() throws IOException {
         // Given
-        String path = "/some/path/to/file.txt";
+        UUID jobId = UUID.randomUUID();
+        String fileName = "stream-test.txt";
+        String content = "Streaming data";
+        MockMultipartFile mockFile = new MockMultipartFile("file", fileName, "text/plain", content.getBytes());
+        String savedPath = storageService.storeFile(mockFile, jobId);
 
         // When
-        File file = storageService.getFile(path);
-
-        // Then
-        assertThat(file).isNotNull();
-        assertThat(file.getPath()).isEqualTo(path);
+        try (InputStream inputStream = storageService.getInputStream(savedPath)) {
+            // Then
+            assertThat(inputStream).isNotNull();
+            String result = new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
+            assertThat(result).isEqualTo(content);
+        }
     }
 }
