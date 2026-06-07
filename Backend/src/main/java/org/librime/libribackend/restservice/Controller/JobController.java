@@ -2,8 +2,10 @@ package org.librime.libribackend.restservice.Controller;
 
 import org.librime.libribackend.DB.JobService;
 import org.librime.libribackend.DB.Model.Job;
+import org.librime.libribackend.Exception.ResourceNotFoundException;
+import org.librime.libribackend.Exception.UnauthorizedAccessException;
 import org.librime.libribackend.MQHandler.MessageRecords.NewJobMessage;
-import org.librime.libribackend.MQHandler.RabbitMQPublisher;
+import org.librime.libribackend.MQHandler.MessagePublisher;
 import org.librime.libribackend.Storage.StorageService;
 import org.librime.libribackend.Types.LanguageType;
 import org.librime.libribackend.Types.SplittingType;
@@ -34,15 +36,15 @@ import java.util.stream.Collectors;
 public class JobController {
 
     private final JobService jobService;
-    private final RabbitMQPublisher rabbitMQPublisher;
+    private final MessagePublisher messagePublisher;
     private final StorageService storageService;
 
     private static final Logger log = LoggerFactory.getLogger(JobController.class);
 
     @Autowired
-    public JobController(JobService jobService, RabbitMQPublisher rabbitMQPublisher, StorageService storageService) {
+    public JobController(JobService jobService, MessagePublisher messagePublisher, StorageService storageService) {
         this.jobService = jobService;
-        this.rabbitMQPublisher = rabbitMQPublisher;
+        this.messagePublisher = messagePublisher;
         this.storageService = storageService;
     }
 
@@ -51,18 +53,18 @@ public class JobController {
     }
 
     @GetMapping("/jobs")
-    public ResponseEntity<List<JobRecord>> getAllJobs() {
+    public List<JobRecord> getAllJobs() {
         String userId = getCurrentUserId();
         log.info("Received request for all jobs for user: {}", userId);
         List<Job> jobs = jobService.getJobsByUserId(userId);
-        List<JobRecord> jobRecords = jobs.stream()
+        return jobs.stream()
                 .map(job -> new StatusJobRecord(job.getJobID(), job.getStatus(), job.getProgress(), "/jobs/"+job.getJobID()+"/result", ""))
                 .collect(Collectors.toList());
-        return new ResponseEntity<>(jobRecords, HttpStatus.OK);
     }
 
     @PostMapping("/jobs")
-    public ResponseEntity<JobRecord> newJob(@RequestParam("file") MultipartFile multipartFile,
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    public JobRecord newJob(@RequestParam("file") MultipartFile multipartFile,
                             @RequestParam("fileLanguage") LanguageType fileLanguage,
                             @RequestParam("translationLanguage") LanguageType translationLanguage,
                             @RequestParam("voiceID") VoiceType voiceType,
@@ -80,26 +82,28 @@ public class JobController {
         Job job = new Job(uuid, filePath, voiceType, splittingType, fileLanguage, translationLanguage, StatusType.QUEUED);
         job.setUserId(userId);
         jobService.createJob(job);
-        rabbitMQPublisher.sendMessage(new NewJobMessage(uuid, fileLanguage, translationLanguage, voiceType, filePath, splittingType));
+        messagePublisher.sendMessage(new NewJobMessage(uuid, fileLanguage, translationLanguage, voiceType, filePath, splittingType));
 
-        return new ResponseEntity<>(new NewJobRecord(uuid, StatusType.QUEUED, "queued file:"+multipartFile.getOriginalFilename(), "/jobs/"+uuid), HttpStatus.ACCEPTED);
+        return new NewJobRecord(uuid, StatusType.QUEUED, "queued file:"+multipartFile.getOriginalFilename(), "/jobs/"+uuid);
     }
 
     @GetMapping("/jobs/{jobID}")
-    public ResponseEntity<JobRecord>  updateJob(@PathVariable UUID jobID){
+    public JobRecord updateJob(@PathVariable UUID jobID){
         log.info("Received status request for job ID: {}", jobID);
         Job job = jobService.getJobByJobId(jobID);
+        
         if (job == null) {
-            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+            throw new ResourceNotFoundException("Job with ID " + jobID + " not found");
         }
         if (!job.getUserId().equals(getCurrentUserId())) {
-            return new ResponseEntity<>(HttpStatus.FORBIDDEN);
+            throw new UnauthorizedAccessException("You do not have permission to access this job");
         }
-        return new ResponseEntity<>(new StatusJobRecord(job.getJobID(), job.getStatus(), job.getProgress(), "/jobs/"+jobID+"/result", ""), HttpStatus.OK);
+        
+        return new StatusJobRecord(job.getJobID(), job.getStatus(), job.getProgress(), "/jobs/"+jobID+"/result", "");
     }
 
     @PutMapping("/jobs/{jobID}")
-    public ResponseEntity<JobRecord>  statusJob(@PathVariable UUID jobID,
+    public JobRecord statusJob(@PathVariable UUID jobID,
                                                 @RequestParam("status") StatusType status,
                                                 @RequestParam("progress") int progress,
                                                 @RequestParam("outputFilePath") String OutputFilePath
@@ -107,6 +111,9 @@ public class JobController {
         log.info("Received update request for job ID: {}", jobID);
 
         Job job = jobService.getJobByJobId(jobID);
+        if (job == null) {
+            throw new ResourceNotFoundException("Job with ID " + jobID + " not found");
+        }
 
         job.setStatus(status);
         job.setProgress(progress);
@@ -114,22 +121,31 @@ public class JobController {
 
         jobService.updateJob(job);
 
-        return new ResponseEntity<>(new StatusJobRecord(job.getJobID(), job.getStatus(), job.getProgress(), "/jobs/"+jobID+"/result", ""), HttpStatus.OK);
+        return new StatusJobRecord(job.getJobID(), job.getStatus(), job.getProgress(), "/jobs/"+jobID+"/result", "");
     }
 
     @GetMapping("/jobs/{jobID}/result")
     public ResponseEntity<Resource> result(@PathVariable UUID jobID) throws MalformedURLException {
         log.info("Received result request for job ID: {}", jobID);
         Job job = jobService.getJobByJobId(jobID);
+        
         if (job == null) {
-            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+            throw new ResourceNotFoundException("Job with ID " + jobID + " not found");
         }
         if (!job.getUserId().equals(getCurrentUserId())) {
-            return new ResponseEntity<>(HttpStatus.FORBIDDEN);
+            throw new UnauthorizedAccessException("You do not have permission to access this job");
         }
-        
-        Resource resource = storageService.getResource(job.getOutputFilePath());
 
+        // Try to get a signed URL first (for GCS)
+        String signedUrl = storageService.getDownloadUrl(job.getOutputFilePath());
+        if (signedUrl != null) {
+            log.info("Redirecting user to signed URL for job ID: {}", jobID);
+            return ResponseEntity.status(HttpStatus.FOUND)
+                    .header(HttpHeaders.LOCATION, signedUrl)
+                    .build();
+        }
+
+        Resource resource = storageService.getResource(job.getOutputFilePath());
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType("audio/mpeg"))
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + resource.getFilename() + "\"")

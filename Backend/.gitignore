@@ -1,5 +1,7 @@
 /target/
+/release/
 /files/
+*.jar
 /.idea/
 /*.iml
 /.vscode/

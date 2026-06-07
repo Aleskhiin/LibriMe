@@ -1,13 +1,14 @@
 package org.librime.libribackend.Storage;
 
+import org.librime.libribackend.Exception.StorageException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -35,13 +36,17 @@ public class LocalStorageService implements StorageService {
             return filePath.toString();
         } catch (IOException e) {
             log.error("Failed to store file {}: {}", fileName, e.getMessage());
-            throw new RuntimeException("Could not store file", e);
+            throw new StorageException("Could not store file", e);
         }
     }
 
     @Override
-    public File getFile(String filePath) {
-        return new File(filePath);
+    public InputStream getInputStream(String filePath) {
+        try {
+            return Files.newInputStream(Paths.get(filePath));
+        } catch (IOException e) {
+            throw new StorageException("Could not read file stream", e);
+        }
     }
 
     @Override
@@ -49,7 +54,12 @@ public class LocalStorageService implements StorageService {
         try {
             return new UrlResource(Paths.get(filePath).toUri());
         } catch (Exception e) {
-            throw new RuntimeException("Could not read file", e);
+            throw new StorageException("Could not read file", e);
         }
+    }
+
+    @Override
+    public String getDownloadUrl(String filePath) {
+        return null;
     }
 }
