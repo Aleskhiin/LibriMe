@@ -53,7 +53,7 @@ class LibriMeBackendIntegrationTests {
                 .exchange()
                 .returnResult(Object.class)
                 .getResponseCookies()
-                .getFirst("libri_jwt");
+                .getFirst("libriME_jwt");
     }
 
     void createJobForUser(UUID jobId, String userId) throws IOException {
@@ -98,13 +98,8 @@ class LibriMeBackendIntegrationTests {
 
     @Test
     void GetJobStatusTest() throws IOException {
-        // 1. Get a session
         ResponseCookie cookie = getSessionCookie();
-        // We need the userId from the token to associate the job, but we can't easily parse it.
-        // Instead, we'll create a job via the API or just rely on the fact that 
-        // a job created via API will be owned by the user.
-        
-        // For this test, let's just upload a job and then check its status.
+
         MultipartBodyBuilder builder = new MultipartBodyBuilder();
         builder.part("file", new ClassPathResource("test.pdf"));
         builder.part("fileLanguage", "en_US");
@@ -131,10 +126,8 @@ class LibriMeBackendIntegrationTests {
 
     @Test
     void  GetJobResultTest() throws IOException {
-        // 1. Get a session
         ResponseCookie cookie = getSessionCookie();
 
-        // 2. Upload a job
         MultipartBodyBuilder builder = new MultipartBodyBuilder();
         builder.part("file", new ClassPathResource("test.pdf"));
         builder.part("fileLanguage", "en_US");
@@ -151,8 +144,7 @@ class LibriMeBackendIntegrationTests {
                 .returnResult().getResponseBody();
 
         assertThat(newJob).isNotNull();
-        
-        // 3. Manually set a result path in DB so we can download it
+
         Job job = jobService.getJobByJobId(newJob.jobID());
         String filePath = "/opt/librime/files/test/test.mp3";
         new File("/opt/librime/files/test/").mkdirs();
@@ -170,7 +162,6 @@ class LibriMeBackendIntegrationTests {
 
     @Test
     void ForbiddenAccessTest() throws IOException {
-        // User A uploads a job
         ResponseCookie cookieA = getSessionCookie();
         
         MultipartBodyBuilder builder = new MultipartBodyBuilder();
@@ -188,7 +179,6 @@ class LibriMeBackendIntegrationTests {
                 .expectBody(NewJobRecord.class)
                 .returnResult().getResponseBody();
 
-        // User B tries to access it
         ResponseCookie cookieB = getSessionCookie();
         
         webClient.get().uri("/jobs/"+jobA.jobID())
@@ -198,29 +188,40 @@ class LibriMeBackendIntegrationTests {
                 .isForbidden();
     }
 
-//    @Test
-//    void RabbitMQshouldSendAndConsumeMessageTest() throws Exception {
-//        // given
-//        String payload = "test";
-//
-//        // when: send GET request to REST endpoint
-//        webClient.get()
-//                .uri(uriBuilder -> uriBuilder
-//                        .path("/queueHelloWorld")
-//                        .queryParam("text", payload)
-//                        .build())
-//                .exchange()
-//                .expectStatus().isOk();
-//
-//        // then: verify the message was consumed
-//        HelloWorld received = rabbitMQListener.takeMessage();
-//        assertThat(received).isEqualTo(new HelloWorld(String.format("Hello, %s!", payload)));
-//    }
+    @Test
+    void JwtSessionPersistenceTest() {
+        FluxExchangeResult<Object> result1 = webClient.get().uri("/jobs")
+                .exchange()
+                .expectStatus().isOk()
+                .returnResult(Object.class);
 
-//    @Test
-//    void HelloWorldEndtoEndTest(){
-//        webClient.get().uri("/helloWorld")
-//                .exchange()
-//                .expectStatus().isOk();
-//    }
+        ResponseCookie cookie1 = result1.getResponseCookies().getFirst("libriME_jwt");
+        assertThat(cookie1).isNotNull();
+
+        webClient.get().uri("/jobs")
+                .cookie(cookie1.getName(), cookie1.getValue())
+                .exchange()
+                .expectStatus().isOk()
+                .expectHeader().doesNotExist("Set-Cookie");
+    }
+
+    @Test
+    void JwtOnFirstPostTest() {
+        MultipartBodyBuilder builder = new MultipartBodyBuilder();
+        builder.part("file", new ClassPathResource("test.pdf"));
+        builder.part("fileLanguage", "en_US");
+        builder.part("translationLanguage", "en_US");
+        builder.part("voiceID", "male_v1");
+        builder.part("splittingID", "DOCUMENT");
+
+        FluxExchangeResult<NewJobRecord> result = webClient.post().uri("/jobs")
+                .body(BodyInserters.fromMultipartData(builder.build()))
+                .exchange()
+                .expectStatus().isAccepted()
+                .returnResult(NewJobRecord.class);
+
+        ResponseCookie cookie = result.getResponseCookies().getFirst("libriME_jwt");
+        assertThat(cookie).isNotNull();
+        assertThat(cookie.getValue()).isNotEmpty();
+    }
 }

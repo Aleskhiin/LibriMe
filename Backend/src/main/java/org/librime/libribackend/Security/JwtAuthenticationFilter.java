@@ -22,14 +22,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     @Autowired
     private JwtUtil jwtUtil;
 
-    private static final String COOKIE_NAME = "libri_jwt";
+    private static final String COOKIE_NAME = "libriME_jwt";
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
 
-        // Skip filter for worker updates (handled in SecurityConfig via permitAll, 
-        // but we can also avoid processing cookies here for performance)
         if (request.getMethod().equals("PUT") && request.getServletPath().startsWith("/jobs/")) {
             filterChain.doFilter(request, response);
             return;
@@ -47,7 +45,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                             userId = jwtUtil.extractUserId(jwt);
                         }
                     } catch (Exception e) {
-                        // Invalid token
+
                     }
                     break;
                 }

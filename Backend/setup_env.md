@@ -44,14 +44,16 @@ Update the following variables in your `.env` file as needed:
 ## 4. Running the Application
 
 ### Using Docker Compose
-The `compose.yaml` file automatically picks up variables from the `.env` file:
+The project uses `compose.local.yaml` for local development. It automatically picks up variables from the `.env` file (with defaults if variables are missing).
 
 ```bash
-docker compose up -d
+docker compose -f compose.local.yaml up -d
 ```
 
+Note: `compose.local.yaml` is ignored by Git. Use `compose.example.yaml` as a template if needed.
+
 ### Running Locally (Maven)
-The Spring Boot application uses `springboot3-dotenv` to automatically load the `.env` file on startup.
+The Spring Boot application uses `springboot3-dotenv` to automatically load the `.env` file on startup. It is also configured to automatically manage the Docker services defined in `compose.local.yaml` via Spring Boot Docker Compose support.
 
 ```bash
 mvn spring-boot:run
