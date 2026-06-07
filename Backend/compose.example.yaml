@@ -7,8 +7,8 @@ services:
       - "5672:5672"
       - "15672:15672"
     environment:
-      RABBITMQ_DEFAULT_USER: user
-      RABBITMQ_DEFAULT_PASS: user
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
     configs:
       - source: rabbitmq-plugins
         target: /etc/rabbitmq/enabled_plugins
@@ -27,9 +27,7 @@ services:
     restart: always
     image: mysql:latest
     environment:
-      MYSQL_ROOT_PASSWORD: 'test_pass' # TODO: Change this
-      MYSQL_USER: 'test'
-      MYSQL_PASS: 'pass'
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
       MYSQL_DATABASE: libribackendDB
     ports:
       - "3306:3306"
@@ -49,7 +47,7 @@ services:
       - mysql
     environment:
       PMA_HOST: mysql
-      MYSQL_ROOT_PASSWORD: 'test_pass'
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
     ports:
       - "8888:80"
 

@@ -1,3 +1,14 @@
 /target/
-/librime/*
-/libribackend/libribackend.iml
+/.idea/
+/*.iml
+/.vscode/
+.DS_Store
+
+# Secrets
+.env
+.env.local
+.env.*.local
+
+# Docker
+compose.local.yaml
+compose.override.yaml
