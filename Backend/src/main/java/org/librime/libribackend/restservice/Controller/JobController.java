@@ -127,9 +127,16 @@ public class JobController {
         if (!job.getUserId().equals(getCurrentUserId())) {
             return new ResponseEntity<>(HttpStatus.FORBIDDEN);
         }
-        
-        Resource resource = storageService.getResource(job.getOutputFilePath());
 
+        String signedUrl = storageService.getDownloadUrl(job.getOutputFilePath());
+        if (signedUrl != null) {
+            log.info("Redirecting user to signed URL for job ID: {}", jobID);
+            return ResponseEntity.status(HttpStatus.FOUND)
+                    .header(HttpHeaders.LOCATION, signedUrl)
+                    .build();
+        }
+
+        Resource resource = storageService.getResource(job.getOutputFilePath());
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType("audio/mpeg"))
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + resource.getFilename() + "\"")

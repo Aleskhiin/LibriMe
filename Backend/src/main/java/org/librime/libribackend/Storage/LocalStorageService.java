@@ -56,4 +56,9 @@ public class LocalStorageService implements StorageService {
             throw new RuntimeException("Could not read file", e);
         }
     }
+
+    @Override
+    public String getDownloadUrl(String filePath) {
+        return null;
+    }
 }

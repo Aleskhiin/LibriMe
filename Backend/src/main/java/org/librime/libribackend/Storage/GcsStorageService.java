@@ -9,10 +9,13 @@ import org.slf4j.LoggerFactory;
 import org.springframework.core.io.Resource;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URL;
 import java.nio.channels.Channels;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 public class GcsStorageService implements StorageService {
 
@@ -49,5 +52,16 @@ public class GcsStorageService implements StorageService {
     @Override
     public Resource getResource(String filePath) {
         return new GoogleStorageResource(storage, "gs://" + bucketName + "/" + filePath);
+    }
+
+    @Override
+    public String getDownloadUrl(String filePath) {
+        URL signedUrl = storage.signUrl(
+                BlobInfo.newBuilder(bucketName, filePath).build(),
+                60,
+                TimeUnit.MINUTES,
+                Storage.SignUrlOption.withV4Signature()
+        );
+        return signedUrl.toString();
     }
 }

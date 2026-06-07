@@ -9,4 +9,5 @@ public interface StorageService {
     String storeFile(MultipartFile file, UUID jobId);
     InputStream getInputStream(String filePath);
     Resource getResource(String filePath);
+    String getDownloadUrl(String filePath);
 }
