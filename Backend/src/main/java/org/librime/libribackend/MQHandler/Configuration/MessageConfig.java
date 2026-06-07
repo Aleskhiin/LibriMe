@@ -28,9 +28,17 @@ public class MessageConfig {
     @Bean
     public MessagePublisher messagePublisher() {
         if ("pubsub".equalsIgnoreCase(provider)) {
+            if (pubSubTemplate == null) {
+                throw new IllegalStateException("MESSAGING_PROVIDER is set to 'pubsub', but PubSubTemplate is not available. Ensure Google Cloud Pub/Sub is enabled and credentials are provided.");
+            }
             return new PubSubMessagePublisher(pubSubTemplate, topicName);
-        } else {
+        } else if ("rabbitmq".equalsIgnoreCase(provider)) {
+            if (rabbitTemplate == null) {
+                throw new IllegalStateException("MESSAGING_PROVIDER is set to 'rabbitmq', but RabbitTemplate is not available.");
+            }
             return new RabbitMQMessagePublisher(rabbitTemplate);
+        } else {
+            throw new IllegalArgumentException("Unsupported messaging provider: " + provider);
         }
     }
 }

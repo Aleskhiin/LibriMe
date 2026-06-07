@@ -23,7 +23,7 @@ public class PubSubMessagePublisher implements MessagePublisher {
             pubSubTemplate.publish(topicName, message);
             log.info("Successfully published message to Pub/Sub topic {}: {}", topicName, message);
         } catch (Exception e) {
-            log.error("Failed to publish message to Pub/Sub: {}", e.getMessage());
+            log.error("Failed to publish message to Pub/Sub topic {}: {}. Message: {}", topicName, e.getMessage(), message, e);
             throw new RuntimeException("Could not publish message to Pub/Sub", e);
         }
     }

@@ -33,7 +33,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
         "spring.cloud.gcp.core.enabled=false",
         "spring.cloud.gcp.storage.enabled=false",
-        "spring.cloud.gcp.pubsub.enabled=false"
+        "spring.cloud.gcp.pubsub.enabled=false",
+        "spring.cloud.gcp.sql.enabled=false"
 })
 class LibriMeBackendIntegrationTests {
 
