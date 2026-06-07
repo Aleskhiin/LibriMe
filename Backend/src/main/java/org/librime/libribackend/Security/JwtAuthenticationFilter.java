@@ -59,7 +59,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             cookie.setHttpOnly(true);
             cookie.setPath("/");
             cookie.setMaxAge(60 * 60 * 24 * 30); // 30 days
-            // cookie.setSecure(true); // Enable in production with HTTPS
+            cookie.setSecure(true); // Enable in production with HTTPS
             response.addCookie(cookie);
         }
 
