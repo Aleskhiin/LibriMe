@@ -1,4 +1,5 @@
 /target/
+/files/
 /.idea/
 /*.iml
 /.vscode/
@@ -12,3 +13,4 @@
 # Docker
 compose.local.yaml
 compose.override.yaml
+

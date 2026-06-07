@@ -4,6 +4,7 @@ import org.librime.libribackend.DB.JobService;
 import org.librime.libribackend.DB.Model.Job;
 import org.librime.libribackend.MQHandler.MessageRecords.NewJobMessage;
 import org.librime.libribackend.MQHandler.RabbitMQPublisher;
+import org.librime.libribackend.Storage.StorageService;
 import org.librime.libribackend.Types.LanguageType;
 import org.librime.libribackend.Types.SplittingType;
 import org.librime.libribackend.Types.StatusType;
@@ -20,14 +21,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.core.io.Resource;
-import org.springframework.core.io.UrlResource;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.context.SecurityContextHolder;
 
-import java.io.File;
 import java.net.MalformedURLException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -36,15 +33,17 @@ import java.util.stream.Collectors;
 @RequestMapping("/")
 public class JobController {
 
-    @Autowired
-    private JobService jobService;
-
-    @Autowired
-    private RabbitMQPublisher rabbitMQPublisher;
+    private final JobService jobService;
+    private final RabbitMQPublisher rabbitMQPublisher;
+    private final StorageService storageService;
 
     private static final Logger log = LoggerFactory.getLogger(JobController.class);
 
-    JobController(){
+    @Autowired
+    public JobController(JobService jobService, RabbitMQPublisher rabbitMQPublisher, StorageService storageService) {
+        this.jobService = jobService;
+        this.rabbitMQPublisher = rabbitMQPublisher;
+        this.storageService = storageService;
     }
 
     private String getCurrentUserId() {
@@ -71,20 +70,11 @@ public class JobController {
         UUID uuid = UUID.randomUUID();
         String userId = getCurrentUserId();
         String fileName = multipartFile.getOriginalFilename();
-        String filePath = "/opt/librime/files/"+ uuid + File.separator + fileName;
 
         log.info("Received file: {} and input language type: {} and output language type: {} and voice type: {}. creating job {} for user {}",
                 fileName, fileLanguage, translationLanguage, voiceType, uuid, userId);
 
-        try {
-            File file = new File(filePath);
-            file.getParentFile().mkdirs();
-            file.createNewFile();
-            multipartFile.transferTo(file.toPath());
-        }
-        catch(Exception e) {
-            log.error(e.getMessage());
-        }
+        String filePath = storageService.storeFile(multipartFile, uuid);
 
         log.info("file: {} transfered to {} ",fileName, filePath);
         Job job = new Job(uuid, filePath, voiceType, splittingType, fileLanguage, translationLanguage, StatusType.QUEUED);
@@ -137,9 +127,8 @@ public class JobController {
         if (!job.getUserId().equals(getCurrentUserId())) {
             return new ResponseEntity<>(HttpStatus.FORBIDDEN);
         }
-        Path path = Paths.get(job.getOutputFilePath());
-        // Load the resource
-        Resource resource = new UrlResource(path.toUri());
+        
+        Resource resource = storageService.getResource(job.getOutputFilePath());
 
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType("audio/mpeg"))

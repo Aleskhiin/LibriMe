@@ -11,6 +11,7 @@ import org.librime.libribackend.Types.SplittingType;
 import org.librime.libribackend.Types.StatusType;
 import org.librime.libribackend.Types.VoiceType;
 import org.librime.libribackend.restservice.Records.NewJobRecord;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.core.io.ClassPathResource;
@@ -41,6 +42,9 @@ class LibriMeBackendIntegrationTests {
     @Autowired
     private RabbitMQTestHelper rabbitMQhelper;
 
+    @Value("${storage.local-path}")
+    private String localPath;
+
     private final String dummyUUID = "00000000-0000-0000-0000-000000000000";
 
     @BeforeEach
@@ -57,7 +61,7 @@ class LibriMeBackendIntegrationTests {
     }
 
     void createJobForUser(UUID jobId, String userId) throws IOException {
-        String filePath = "/opt/librime/files/test/";
+        String filePath = Paths.get(localPath, "test").toString() + File.separator;
         File file = new File(filePath);
         file.mkdirs();
 
@@ -92,7 +96,7 @@ class LibriMeBackendIntegrationTests {
                 LanguageType.en_US,
                 LanguageType.en_US,
                 VoiceType.male_v1,
-                "/opt/librime/files/"+ received.jobID() + File.separator + "test.pdf",
+                Paths.get(localPath, received.jobID().toString(), "test.pdf").toString(),
                 SplittingType.DOCUMENT));
     }
 
@@ -146,8 +150,8 @@ class LibriMeBackendIntegrationTests {
         assertThat(newJob).isNotNull();
 
         Job job = jobService.getJobByJobId(newJob.jobID());
-        String filePath = "/opt/librime/files/test/test.mp3";
-        new File("/opt/librime/files/test/").mkdirs();
+        String filePath = Paths.get(localPath, "test", "test.mp3").toString();
+        new File(localPath, "test/").mkdirs();
         Files.copy(Paths.get(System.getProperty("user.dir"),"src/test/resources/test.mp3"), Paths.get(filePath), StandardCopyOption.REPLACE_EXISTING);
         job.setOutputFilePath(filePath);
         jobService.updateJob(job);
