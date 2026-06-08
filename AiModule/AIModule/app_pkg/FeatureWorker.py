@@ -3,6 +3,7 @@ import os
 import queue
 from typing import List, Dict, Any
 
+from app_pkg.Features.Images.ImageReaderFactory import ImageReaderFactory
 from app_pkg.Features.Readers.DocumentReaderFactory import DocumentReaderFactory
 from app_pkg.Features.TextToSpeechFeature import TextToSpeechFeature
 from app_pkg.Features.TranslatorFeature import TranslatorFeature

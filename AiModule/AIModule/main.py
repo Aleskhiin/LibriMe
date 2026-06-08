@@ -1,30 +1,36 @@
-import os
-import yaml
+import asyncio
+import logging
 
-from app_pkg.RabbitMQ.RabbitMQConnector import RabbitMQConnector
-from app_pkg.RabbitMQ.RabbitMQManager import RabbitMQManager
-from app_pkg.RabbitMQ.JobProcessor import make_job_callback
+from fastapi import FastAPI, Request, Response
 
-CONSUMER_QUEUE = "newjob.queue"
+from app_pkg.PubSub.PubSubJobHandler import PubSubJobHandler
+
+logger = logging.getLogger(__name__)
+
+app = FastAPI(title="LibriMe AI Module")
+
+_handler: PubSubJobHandler | None = None
 
 
-def load_config(path: str) -> dict:
-    with open(path, "r") as f:
-        return yaml.safe_load(f)
+def _get_handler() -> PubSubJobHandler:
+    global _handler
+    if _handler is None:
+        _handler = PubSubJobHandler()
+    return _handler
 
 
-if __name__ == "__main__":
-    config_path = os.path.join(os.path.dirname(__file__), "app_pkg", "Resources", "config.yaml")
-    config = load_config(config_path)
+@app.get("/health")
+def health():
+    return {"status": "ok"}
 
-    host = os.environ.get("RABBITMQ_HOST") or config["rabbitmq"]["host"]
-    num_workers = config["rabbitmq"].get("num_workers", 2)
 
-    connector = RabbitMQConnector(host=host)
-    manager = RabbitMQManager(connector)
-    callback = make_job_callback(connector)
-    manager.add_consumer(CONSUMER_QUEUE, callback, count=num_workers)
-
-    print(f"[*] LibriMe AI Module starting — {num_workers} worker(s) on '{CONSUMER_QUEUE}'")
-    manager.start_all()
-    manager.wait_for_all()
+@app.post("/pubsub/push")
+async def pubsub_push(request: Request) -> Response:
+    body = await request.json()
+    loop = asyncio.get_running_loop()
+    try:
+        await loop.run_in_executor(None, _get_handler().handle, body)
+        return Response(status_code=200)
+    except Exception as e:
+        logger.error(f"Infrastructure error processing Pub/Sub message: {e}")
+        return Response(status_code=500)
