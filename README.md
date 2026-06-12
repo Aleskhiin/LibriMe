@@ -9,7 +9,7 @@ The following capabilities define the LibriMe platform:
 1. **Neural Speech Synthesis**: Utilizes advanced AI models to generate human like narration that maintains high engagement levels.
 2. **Integrated OCR**: Processes complex document layouts from scanned notes or photographs to extract clean text.
 3. **Asynchronous Processing**: Employs a message queue architecture to handle multiple conversion jobs simultaneously without impacting system performance.
-4. **Multi Format Support**: Enables the conversion of PDF, JPG, PNG, and TIF files into accessible audio assets.
+4. **Multi Format Support**: Enables the conversion of PDF, JPG and PNG files into accessible audio assets.
 
 ## Prerequisites
 
