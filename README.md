@@ -33,7 +33,7 @@ The primary method for deploying LibriMe is via Docker Compose, which manages th
 The initial setup involves downloading significant AI model data. This process can take approximately 40 minutes depending on network conditions. Once complete, the system is accessible via `http://localhost`.
 
 ### Local Development
-For development purposes, services can be executed individually within their respective directories. Please refer to the [Backend README](Backend/README.md) and module specific documentation for local configuration details.
+For development purposes, services can be executed individually within their respective directories. Please refer to the module specific documentation for local configuration details.
 
 ## Operational Workflow
 
