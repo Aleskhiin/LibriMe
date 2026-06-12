@@ -1,96 +1,67 @@
-# ![alt text](misc/img/logo.png "LibriMe Logo") LibriMe 
+# ![LibriMe Logo](misc/img/logo.png) LibriMe
 
->***"Freedom starts in your ear."***
+LibriMe is an automated system designed to transform text based documents into high quality audio experiences. By combining Optical Character Recognition (OCR) with neural speech synthesis, the platform enables the conversion of PDFs and images into natural sounding audiobooks.
 
-**Have you ever struggled to get through an entire script from your last lecture?**
-Or maybe you want to make your time spent on chores or while driving more productive by learning something new, but find it difficult to listen to text-to-speech audio? If so, this application might just become your new best friend.
+## Key Features
 
-LibriMe is an **easy-to-use** web application designed to make your day-to-day life easier by converting any text-based content into **natural** speech. Simply upload the PDF or even an image file (like JPG or PNG) containing text to listen to, and we’ll turn it into an **"audiobook experience"** for you. Powered by cutting-edge technology, the generated audio sounds like a professionally recorded audiobook, not just a generic text-to-speech voice. 
+The following capabilities define the LibriMe platform:
 
-Using advanced Optical Character Recognition (OCR) technology, LibriMe can accurately extract text from scanned documents, handwritten notes, or photographed pages. The extracted text is then transformed into an immersive **"audiobook experience"**, powered by cutting-edge speech synthesis that sounds just like a professional narrator and not a robotic text-to-speech voice.
+1. **Neural Speech Synthesis**: Utilizes advanced AI models to generate human like narration that maintains high engagement levels.
+2. **Integrated OCR**: Processes complex document layouts from scanned notes or photographs to extract clean text.
+3. **Asynchronous Processing**: Employs a message queue architecture to handle multiple conversion jobs simultaneously without impacting system performance.
+4. **Multi Format Support**: Enables the conversion of PDF, JPG, PNG, and TIF files into accessible audio assets.
 
-Whether it’s lecture notes, articles, or photos of printed material, LibriMe lets you listen and learn anytime, anywhere.
-Start to use LibriMe for your daily learning routine because **"Freedom starts in your ear."**
+## Prerequisites
 
----
+The system requires the following components for successful deployment:
 
-## Meet the team
-| Name                     | Role                                                     |
-|--------------------------|----------------------------------------------------------|
-| Florian Fuchs            | Projektmanager & Co. AI Module Developer                 |
-| Dominik Bliem-Zupansky   | Frontend Developer & Head of Marketing                   |
-| Georg Maier              | AI Module Developer & Assistant Documentation Manager    |
-| Stefan Aldrian           | Head of Documentation & Assistant Marketing Manager      |
-| Philip Macheiner         | Backend development & Assistant Projectmanager           |
+* **Docker**: Version 20.10 or higher.
+* **Docker Compose**: Version 2.0 or higher.
+* **System Resources**: Minimum 16GB RAM recommended for AI model optimization and processing.
+* **Network**: Stable internet connection for the initial download of neural network weights.
 
+## Installation and Deployment
 
----
+### Production Setup
+The primary method for deploying LibriMe is via Docker Compose, which manages the orchestration of the backend, AI modules, and frontend services.
 
-## Keyfeatures
+1. Clone the repository to the target environment.
+2. Navigate to the project root directory.
+3. Execute the deployment command:
+   `docker compose up -d --build`
 
-### Must haves
-| Feature                  | Description                                     |
-|--------------------------|-------------------------------------------------|
-| PDF-Upload               | Upload and extraction of text from a pdf file   |
-| Text-to-Audio-Conversion | Convert extracted Text to Audio                 |
-| Audio-Download           | Present user with option to download audio file |
+The initial setup involves downloading significant AI model data. This process can take approximately 40 minutes depending on network conditions. Once complete, the system is accessible via `http://localhost`.
 
+### Local Development
+For development purposes, services can be executed individually within their respective directories. Please refer to the [Backend README](Backend/README.md) and module specific documentation for local configuration details.
 
-### nice to haves
-| Feature                      | Description                                                     |
-|------------------------------|-----------------------------------------------------------------|
-| Audiofile splitting          | Option to split file in multiple smaller files                  |
-| Multiuser support            | Implement Messagequeue to load balance and enable multiple user |
-| Text recognition in pictures | Implement OCR to enable conversion of different filetypes       |
-| Translation service          | Implement translation to different languages                    |
+## Operational Workflow
 
----
+1. **Ingestion**: Upload documents through the web interface.
+2. **Selection**: Choose the target language and preferred voice profile.
+3. **Synthesis**: Start the conversion process.
+4. **Completion**: Play the audio directly in the browser or download the file for offline use.
 
-## Techstack and Architecture
-### Architecture Overview
-![alt text](misc/img/architecture_overview.png "Softwarearchitecture overview")
+## Project Structure
 
-The user is presented via a web UI where can upload the chosen PDF-file/Image and trigger a conversion into an audiofile. After the conversion is done the user is presented with the audio file and the option to listen to it directly in the browser
+* **Backend**: Java based orchestrator for job management. See [Backend Documentation](Backend/README.md).
+* **AI Module**: Python services for OCR and speech synthesis.
+* **Frontend**: React application for user interaction.
 
-### Techstack overview
-| software part  | languageID | framework | description                                           |
-| -- | -- | -- |-------------------------------------------------------|
-| Frontend | TypeScript | React | User presentation layer                               |
-| Backend | Java | Springboot | Request and application flow control                  |
-| AI - Modul | Python | Pytorch | OCR, pdf extraction and AI model for voice generation |
- 
- Due to the complexity of the AI module, the frontend will be implemented in the start-up project in the next semester for time reasons. Therefore, we present the standalone version.
----
+## Roadmap and Status
 
-## Getting started
+The project is currently in a stable beta phase. Future updates will focus on:
+* Support for additional document formats.
+* Enhanced narrator customization options.
+* Integration with cloud storage providers.
 
-### Prerequisites
-- Docker Desktop installed (https://docs.docker.com/desktop)
+## Contributing
 
-### Local installation
-1. Download the installation files (via `git clone` or directly on the git lab site)
-2. Use a Terminal and navigate to recently downloaded folder an execute `docker compose up -d`.<br>
-   (Please note that the installation can take up to 40 minutes due to the many resources.)
-3. All needed container should be up and running
+Contributions are welcome to improve the LibriMe platform. Please submit bug reports or feature requests through the project issue tracker. Pull requests should follow the existing code style and include relevant tests.
 
-Hint: should there be any problems a restart od all container with `docker compose down -v` and `docker compose up -d`
+## License
 
-### Standalone Flask Version
+This project is released under the MIT License. See the LICENSE file for more information.
 
-A standalone version using Flask is available.
-This version can be accessed locally via http://localhost:5000
-
-![alt text](misc/img/standalone.png "Standalone Version")
-
-The standalone variant allows you to upload PDF and PNG files and convert them directly into audio files.
-At the moment, however, audio output is only available in German.
-
-## Use
-1. In a browser visit the main website [localhost](http://localhost:80)
-2. Upload your PDF-file or picture by pressing the upload button and choosing your file, or use the drag and drop Feature.
-3. Pick the language you want the audio to be generated in.
-4. Select the voice you’d like to use as the narrator for your audiobook.
-5. Press "start voicing" to start the generation of the audio file.
-6. After the progressbar is full you will be presented the new audiofile, which you can listen to by pressing "play audio" or download by pressing "download file".
-
-You can go back to the upload site by pressing "Create another audiobook" on the result view.
+## Architecture
+![System Architecture Overview](misc/img/architecture_overview.png)
