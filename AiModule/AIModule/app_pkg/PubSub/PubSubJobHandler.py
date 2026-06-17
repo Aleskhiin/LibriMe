@@ -29,15 +29,19 @@ class PubSubJobHandler:
 
     def parse_message(self, push_body: Dict[str, Any]) -> Dict[str, Any]:
         data_b64 = push_body["message"]["data"]
-        return json.loads(base64.b64decode(data_b64))
+        decoded = base64.b64decode(data_b64).decode("utf-8")
+        return json.loads(decoded)
 
     def handle(self, push_body: Dict[str, Any]) -> None:
         msg = self.parse_message(push_body)
+
         job_id = msg["jobID"]
         data_path = msg["dataPath"]
         from_lang = _lang_code(msg["fileLanguage"])
         to_lang = _lang_code(msg["translationLanguage"])
         read_mode = SPLITTING_MAP.get(msg["splittingType"], "document")
+
+        logger.info(f"Starting job {job_id}")
 
         self.backend.update_status(job_id, "RUNNING", 0)
 
@@ -53,16 +57,13 @@ class PubSubJobHandler:
                 to_lang=to_lang,
             )
 
-            try:
-                result = asyncio.run(worker.run(
+            result = asyncio.run(
+                worker.run(
                     input_file=local_input,
                     read_mode=read_mode,
                     filename=job_id,
-                ))
-            except Exception as e:
-                logger.error(f"Job {job_id} processing failed: {e}")
-                self.backend.update_status(job_id, "FAILED", 0)
-                return
+                )
+            )
 
             if "audio" in result:
                 audio_path = result["audio"]
@@ -74,6 +75,12 @@ class PubSubJobHandler:
                 output_path = f"{job_id}/"
 
             self.backend.update_status(job_id, "COMPLETED", 100, output_path)
+            logger.info(f"Job {job_id} completed: {output_path}")
+
+        except Exception as e:
+            logger.error(f"Job {job_id} failed: {e}", exc_info=True)
+            self.backend.update_status(job_id, "FAILED", 0)
+            raise
 
         finally:
             if local_input:
