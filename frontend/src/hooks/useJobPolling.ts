@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { getJobStatus } from '../api';
 import type { JobEntry } from '../types';
 
@@ -10,24 +10,25 @@ interface UseJobPollingProps {
 }
 
 export function useJobPolling({ jobs, onUpdate }: UseJobPollingProps) {
-  const activeJobIDs = jobs
-    .filter(j => j.status === 'QUEUED' || j.status === 'RUNNING')
-    .map(j => j.jobID);
+  const activeJobIDs = useMemo(
+    () => jobs
+      .filter(job => job.status === 'QUEUED' || job.status === 'RUNNING')
+      .map(job => job.jobID),
+    [jobs]
+  );
 
   const intervalsRef = useRef<Map<string, ReturnType<typeof setInterval>>>(new Map());
 
   useEffect(() => {
-    // Neue aktive Jobs starten
     for (const jobID of activeJobIDs) {
       if (!intervalsRef.current.has(jobID)) {
         const poll = async () => {
           try {
             const status = await getJobStatus(jobID);
+            const { createdAt, ...updates } = status;
             onUpdate(jobID, {
-              status: status.status,
-              progress: status.progress ?? 0,
-              downloadURL: status.downloadURL ?? null,
-              error: status.error ?? null,
+              ...updates,
+              ...(createdAt ? { createdAt: new Date(createdAt) } : {}),
             });
 
             if (status.status === 'COMPLETED' || status.status === 'FAILED') {
@@ -38,33 +39,32 @@ export function useJobPolling({ jobs, onUpdate }: UseJobPollingProps) {
               }
             }
           } catch (err) {
-            console.error(`Polling-Fehler für Job ${jobID}:`, err);
+            console.error(`Polling-Fehler fuer Job ${jobID}:`, err);
           }
         };
 
-        // Sofort einmal abfragen
         poll();
         const interval = setInterval(poll, POLL_INTERVAL_MS);
         intervalsRef.current.set(jobID, interval);
       }
     }
 
-    // Nicht mehr aktive Jobs stoppen
     for (const [jobID, interval] of intervalsRef.current.entries()) {
       if (!activeJobIDs.includes(jobID)) {
         clearInterval(interval);
         intervalsRef.current.delete(jobID);
       }
     }
-  }, [activeJobIDs.join(',')]);
+  }, [activeJobIDs, onUpdate]);
 
-  // Cleanup beim Unmount
   useEffect(() => {
+    const intervals = intervalsRef.current;
+
     return () => {
-      for (const interval of intervalsRef.current.values()) {
+      for (const interval of intervals.values()) {
         clearInterval(interval);
       }
-      intervalsRef.current.clear();
+      intervals.clear();
     };
   }, []);
 }

@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback } from 'react';
+import { useCallback, useRef, useState } from 'react';
 
 interface UploadFormProps {
   onSubmit: (params: {
@@ -13,13 +13,10 @@ interface UploadFormProps {
 
 const LANGUAGE_OPTIONS = [
   { value: 'en_US', label: 'English (US)' },
-  { value: 'de_DE', label: 'Deutsch' },
-  { value: 'fr_FR', label: 'Français' },
-  { value: 'es_ES', label: 'Español' },
 ];
 
 const VOICE_OPTIONS = [
-  { value: 'male_v1', label: 'Männlich (v1)' },
+  { value: 'male_v1', label: 'Maennlich (v1)' },
 ];
 
 const SPLITTING_OPTIONS = [
@@ -32,38 +29,39 @@ export default function UploadForm({ onSubmit, isLoading }: UploadFormProps) {
   const [dragOver, setDragOver] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileLanguage, setFileLanguage] = useState('en_US');
-  const [translationLanguage, setTranslationLanguage] = useState('de_DE');
+  const [translationLanguage, setTranslationLanguage] = useState('en_US');
   const [voiceID, setVoiceID] = useState('male_v1');
   const [splittingID, setSplittingID] = useState('DOCUMENT');
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const ACCEPTED_TYPES = ['application/pdf'];
-
   const validateFile = (file: File): boolean => {
-    if (!ACCEPTED_TYPES.includes(file.type)) {
+    if (file.type !== 'application/pdf') {
       setError('Nur PDF-Dateien sind erlaubt.');
       return false;
     }
+
     if (file.size > 50 * 1024 * 1024) {
-      setError('Die Datei darf maximal 50 MB groß sein.');
+      setError('Die Datei darf maximal 50 MB gross sein.');
       return false;
     }
+
     setError(null);
     return true;
   };
 
-  const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
+  const handleDrop = useCallback((event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
     setDragOver(false);
-    const file = e.dataTransfer.files[0];
+
+    const file = event.dataTransfer.files[0];
     if (file && validateFile(file)) {
       setSelectedFile(file);
     }
   }, []);
 
-  const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
+  const handleDragOver = useCallback((event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
     setDragOver(true);
   }, []);
 
@@ -71,20 +69,30 @@ export default function UploadForm({ onSubmit, isLoading }: UploadFormProps) {
     setDragOver(false);
   }, []);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
     if (file && validateFile(file)) {
       setSelectedFile(file);
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
+
     if (!selectedFile) {
-      setError('Bitte wähle eine PDF-Datei aus.');
+      setError('Bitte waehle eine PDF-Datei aus.');
       return;
     }
+
     onSubmit({ file: selectedFile, fileLanguage, translationLanguage, voiceID, splittingID });
+  };
+
+  const clearSelectedFile = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+    setSelectedFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   const formatFileSize = (bytes: number): string => {
@@ -95,7 +103,6 @@ export default function UploadForm({ onSubmit, isLoading }: UploadFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Drag & Drop Zone */}
       <div
         onClick={() => fileInputRef.current?.click()}
         onDrop={handleDrop}
@@ -104,7 +111,7 @@ export default function UploadForm({ onSubmit, isLoading }: UploadFormProps) {
         className={`
           relative cursor-pointer rounded-2xl border-2 border-dashed p-10 text-center transition-all duration-200
           ${dragOver
-            ? 'border-indigo-500 bg-indigo-50 scale-[1.01]'
+            ? 'scale-[1.01] border-indigo-500 bg-indigo-50'
             : selectedFile
               ? 'border-green-400 bg-green-50'
               : 'border-gray-300 bg-gray-50 hover:border-indigo-400 hover:bg-indigo-50'
@@ -132,7 +139,7 @@ export default function UploadForm({ onSubmit, isLoading }: UploadFormProps) {
             </div>
             <button
               type="button"
-              onClick={(e) => { e.stopPropagation(); setSelectedFile(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
+              onClick={clearSelectedFile}
               className="text-xs text-red-500 underline hover:text-red-700"
             >
               Datei entfernen
@@ -147,7 +154,7 @@ export default function UploadForm({ onSubmit, isLoading }: UploadFormProps) {
             </div>
             <div>
               <p className="font-semibold text-gray-700">PDF-Datei hier ablegen</p>
-              <p className="text-sm text-gray-500">oder klicken zum Auswählen</p>
+              <p className="text-sm text-gray-500">oder klicken zum Auswaehlen</p>
             </div>
             <p className="text-xs text-gray-400">PDF-Dateien bis 50 MB</p>
           </div>
@@ -163,7 +170,6 @@ export default function UploadForm({ onSubmit, isLoading }: UploadFormProps) {
         </div>
       )}
 
-      {/* Einstellungen */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
           <label className="mb-1.5 block text-sm font-medium text-gray-700">
@@ -171,26 +177,26 @@ export default function UploadForm({ onSubmit, isLoading }: UploadFormProps) {
           </label>
           <select
             value={fileLanguage}
-            onChange={(e) => setFileLanguage(e.target.value)}
+            onChange={(event) => setFileLanguage(event.target.value)}
             className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
           >
-            {LANGUAGE_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            {LANGUAGE_OPTIONS.map(option => (
+              <option key={option.value} value={option.value}>{option.label}</option>
             ))}
           </select>
         </div>
 
         <div>
           <label className="mb-1.5 block text-sm font-medium text-gray-700">
-            Zielsprache (Stimme)
+            Zielsprache
           </label>
           <select
             value={translationLanguage}
-            onChange={(e) => setTranslationLanguage(e.target.value)}
+            onChange={(event) => setTranslationLanguage(event.target.value)}
             className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
           >
-            {LANGUAGE_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            {LANGUAGE_OPTIONS.map(option => (
+              <option key={option.value} value={option.value}>{option.label}</option>
             ))}
           </select>
         </div>
@@ -201,11 +207,11 @@ export default function UploadForm({ onSubmit, isLoading }: UploadFormProps) {
           </label>
           <select
             value={voiceID}
-            onChange={(e) => setVoiceID(e.target.value)}
+            onChange={(event) => setVoiceID(event.target.value)}
             className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
           >
-            {VOICE_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            {VOICE_OPTIONS.map(option => (
+              <option key={option.value} value={option.value}>{option.label}</option>
             ))}
           </select>
         </div>
@@ -216,27 +222,23 @@ export default function UploadForm({ onSubmit, isLoading }: UploadFormProps) {
           </label>
           <select
             value={splittingID}
-            onChange={(e) => setSplittingID(e.target.value)}
+            onChange={(event) => setSplittingID(event.target.value)}
             className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
           >
-            {SPLITTING_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            {SPLITTING_OPTIONS.map(option => (
+              <option key={option.value} value={option.value}>{option.label}</option>
             ))}
           </select>
         </div>
       </div>
 
-      {/* Submit Button */}
       <button
         type="submit"
         disabled={isLoading || !selectedFile}
         className="
-          w-full rounded-xl bg-indigo-600 px-6 py-3.5 text-base font-semibold text-white shadow-md
-          transition-all duration-200
-          hover:bg-indigo-700 hover:shadow-lg
-          active:scale-[0.98]
+          flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-6 py-3.5 text-base font-semibold text-white shadow-md
+          transition-all duration-200 hover:bg-indigo-700 hover:shadow-lg active:scale-[0.98]
           disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none
-          flex items-center justify-center gap-2
         "
       >
         {isLoading ? (
@@ -245,7 +247,7 @@ export default function UploadForm({ onSubmit, isLoading }: UploadFormProps) {
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
             </svg>
-            Wird hochgeladen…
+            Wird hochgeladen...
           </>
         ) : (
           <>
