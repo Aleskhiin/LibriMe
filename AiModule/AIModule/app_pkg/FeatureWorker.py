@@ -299,13 +299,32 @@ class FeatureWorker:
         )
 
         # Execute the reader asynchronously via BaseFeature interface
-        result = await reader.process()
+        try:
+            result = await reader.process()
+
+        except ValueError as e:
+            logger.warning(
+                f"Document reader returned no content: {e}. "
+                f"Using fallback text."
+            )
+
+            result = "Datei leer"
+
+        except Exception as e:
+            logger.error(
+                f"Unexpected document processing error: {e}"
+            )
+
+            result = "Datei leer"
 
         logger.info("Finish extracting text out of document.")
 
         # In document mode, all content becomes one audio file
-        if mode == "document":
-            text = self._normalize_to_text(result)
+        if not text or not text.strip():
+            logger.warning(
+                "Document contains no readable content."
+            )
+            text = "Datei leer"
 
             # Optional translation of the complete document text
             text = self._maybe_translate(text)
@@ -325,9 +344,12 @@ class FeatureWorker:
         chunks = self._normalize_to_chunks(result)
 
         if not chunks:
-            raise ValueError(
-                "Document reader returned no content for the selected read_mode."
+            logger.warning(
+                "Document reader returned no content. "
+                "Using fallback text."
             )
+
+            chunks = ["Datei leer"]
 
         # Translate each chunk separately if needed
         if self.from_lang != self.to_lang:
