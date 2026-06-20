@@ -1,8 +1,11 @@
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import librimeBg from '../assets/librime_bg.png';
+import LanguageToggle from '../components/LanguageToggle';
+import { useI18n } from '../i18n';
 
 export default function LandingPage() {
   const navigate = useNavigate();
+  const { t } = useI18n();
 
   return (
     <div
@@ -16,6 +19,7 @@ export default function LandingPage() {
             <h1 className="text-xl font-bold tracking-tight text-stone-950">LibriMe</h1>
             <p className="text-xs italic text-stone-600">"Freedom starts in your ear."</p>
           </div>
+          <LanguageToggle />
         </div>
       </header>
 
@@ -23,11 +27,10 @@ export default function LandingPage() {
         <img src="/logoBig.png" alt="LibriMe" className="mb-8 h-24 w-auto" />
 
         <h2 className="max-w-2xl text-4xl font-bold tracking-tight text-stone-950 sm:text-5xl">
-          Verwandle Dateien in Hörbücher
+          {t('landingTitle')}
         </h2>
         <p className="mt-4 max-w-xl text-base text-stone-600 sm:text-lg">
-          Lade dein Dokument hoch und LibriMe erstellt dir automatisch eine hochwertige
-          Audio-Version.
+          {t('landingSubtitle')}
         </p>
 
         <button
@@ -37,7 +40,7 @@ export default function LandingPage() {
             transition-all duration-200 hover:bg-orange-700 hover:shadow-lg active:scale-[0.98]
           "
         >
-          Zur App
+          {t('landingCta')}
           <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
           </svg>
@@ -50,8 +53,8 @@ export default function LandingPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
             </div>
-            <p className="font-semibold text-stone-800">Dokumente hochladen</p>
-            <p className="mt-1 text-sm text-stone-600">Einfach per Drag &amp; Drop oder Dateiauswahl, bis 50&nbsp;MB.</p>
+            <p className="font-semibold text-stone-800">{t('landingUploadTitle')}</p>
+            <p className="mt-1 text-sm text-stone-600">{t('landingUploadText')}</p>
           </div>
 
           <div className="rounded-2xl border border-orange-100 bg-orange-50/85 p-6 text-left shadow-sm shadow-orange-900/5 backdrop-blur-sm">
@@ -60,8 +63,8 @@ export default function LandingPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
               </svg>
             </div>
-            <p className="font-semibold text-stone-800">Automatische Vertonung</p>
-            <p className="mt-1 text-sm text-stone-600">Text-Extraktion und Sprachsynthese laufen vollautomatisch im Hintergrund.</p>
+            <p className="font-semibold text-stone-800">{t('landingTtsTitle')}</p>
+            <p className="mt-1 text-sm text-stone-600">{t('landingTtsText')}</p>
           </div>
 
           <div className="rounded-2xl border border-orange-100 bg-orange-50/85 p-6 text-left shadow-sm shadow-orange-900/5 backdrop-blur-sm">
@@ -70,14 +73,19 @@ export default function LandingPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 13l4 4L19 7" />
               </svg>
             </div>
-            <p className="font-semibold text-stone-800">Fertig zum Anhören</p>
-            <p className="mt-1 text-sm text-stone-600">Fortschritt live verfolgen und das fertige Hörbuch direkt herunterladen.</p>
+            <p className="font-semibold text-stone-800">{t('landingReadyTitle')}</p>
+            <p className="mt-1 text-sm text-stone-600">{t('landingReadyText')}</p>
           </div>
         </div>
       </main>
 
       <footer className="border-t border-orange-200/70 bg-orange-50/70 py-6 text-center text-xs text-stone-500">
-        <p>LibriMe - Datei zu Hörbuch.</p>
+        <div className="mx-auto flex max-w-5xl flex-col items-center justify-center gap-2 px-6 sm:flex-row sm:gap-4">
+          <p>{t('landingFooter')}</p>
+          <Link to="/impressum" className="font-medium text-orange-700 underline-offset-4 hover:underline">
+            {t('footerImprint')}
+          </Link>
+        </div>
       </footer>
     </div>
   );

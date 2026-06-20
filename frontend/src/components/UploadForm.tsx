@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
+import { useI18n } from '../i18n';
 
 interface UploadFormProps {
   onSubmit: (params: {
@@ -13,14 +14,14 @@ interface UploadFormProps {
 }
 
 const LANGUAGE_OPTIONS = [
-  { value: 'en_US', label: 'English (US)' },
-  { value: 'de_DE', label: 'Deutsch' },
-  { value: 'fr_FR', label: 'Französisch' },
+  { value: 'en_US', labelKey: 'optionEnglishUs' },
+  { value: 'de_DE', labelKey: 'optionGerman' },
+  { value: 'fr_FR', labelKey: 'optionFrench' },
 ];
 
 const VOICE_OPTIONS = [
-  { value: 'male_v1', label: 'Männlich (v1)' },
-  { value: 'female_v1', label: 'Weiblich (v1)' },
+  { value: 'male_v1', labelKey: 'optionMale' },
+  { value: 'female_v1', labelKey: 'optionFemale' },
 ];
 
 const ENGLISH_US_VOICE_ID = 'female_v1';
@@ -51,12 +52,13 @@ const ACCEPTED_FILE_EXTENSIONS = [
 const ACCEPTED_FILE_TYPES = ACCEPTED_FILE_EXTENSIONS.join(',');
 
 const SPLITTING_OPTIONS = [
-  { value: 'DOCUMENT', label: 'Ganzes Dokument' },
-  { value: 'PAGE', label: 'Seitenweise' },
-  { value: 'PARAGRAPH', label: 'Absatzweise' },
+  { value: 'DOCUMENT', labelKey: 'optionWholeDocument' },
+  { value: 'PAGE', labelKey: 'optionPage' },
+  { value: 'PARAGRAPH', labelKey: 'optionParagraph' },
 ];
 
 export default function UploadForm({ onSubmit, isLoading, submitDisabledReason }: UploadFormProps) {
+  const { t } = useI18n();
   const [dragOver, setDragOver] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileLanguage, setFileLanguage] = useState('en_US');
@@ -66,23 +68,23 @@ export default function UploadForm({ onSubmit, isLoading, submitDisabledReason }
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const validateFile = (file: File): boolean => {
+  const validateFile = useCallback((file: File): boolean => {
     const fileName = file.name.toLowerCase();
     const hasAcceptedExtension = ACCEPTED_FILE_EXTENSIONS.some(extension => fileName.endsWith(extension));
 
     if (!hasAcceptedExtension) {
-      setError('Dieses Dateiformat wird nicht unterstützt.');
+      setError(t('uploadUnsupportedFile'));
       return false;
     }
 
     if (file.size > 50 * 1024 * 1024) {
-      setError('Die Datei darf maximal 50 MB groß sein.');
+      setError(t('uploadTooLarge'));
       return false;
     }
 
     setError(null);
     return true;
-  };
+  }, [t]);
 
   const handleDrop = useCallback((event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
@@ -92,7 +94,7 @@ export default function UploadForm({ onSubmit, isLoading, submitDisabledReason }
     if (file && validateFile(file)) {
       setSelectedFile(file);
     }
-  }, []);
+  }, [validateFile]);
 
   const handleDragOver = useCallback((event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
@@ -119,7 +121,7 @@ export default function UploadForm({ onSubmit, isLoading, submitDisabledReason }
     }
 
     if (!selectedFile) {
-      setError('Bitte wähle eine Datei aus.');
+      setError(t('uploadChooseFile'));
       return;
     }
 
@@ -196,7 +198,7 @@ export default function UploadForm({ onSubmit, isLoading, submitDisabledReason }
               onClick={clearSelectedFile}
               className="text-xs text-red-500 underline hover:text-red-700"
             >
-              Datei entfernen
+              {t('uploadRemoveFile')}
             </button>
           </div>
         ) : (
@@ -207,7 +209,7 @@ export default function UploadForm({ onSubmit, isLoading, submitDisabledReason }
               </svg>
             </div>
             <div>
-              <p className="font-semibold text-stone-800">Datei hier ablegen oder klicken zum Auswählen</p>
+              <p className="font-semibold text-stone-800">{t('uploadDropFile')}</p>
             </div>
           </div>
         )}
@@ -234,7 +236,7 @@ export default function UploadForm({ onSubmit, isLoading, submitDisabledReason }
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
           <label className="mb-1.5 block text-sm font-medium text-gray-700">
-            Ausgangssprache
+            {t('uploadSourceLanguage')}
           </label>
           <select
             value={fileLanguage}
@@ -242,14 +244,14 @@ export default function UploadForm({ onSubmit, isLoading, submitDisabledReason }
             className="w-full rounded-lg border border-orange-200 bg-white px-3 py-2.5 text-sm shadow-sm focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-200"
           >
             {LANGUAGE_OPTIONS.map(option => (
-              <option key={option.value} value={option.value}>{option.label}</option>
+              <option key={option.value} value={option.value}>{t(option.labelKey)}</option>
             ))}
           </select>
         </div>
 
         <div>
           <label className="mb-1.5 block text-sm font-medium text-gray-700">
-            Zielsprache
+            {t('uploadTargetLanguage')}
           </label>
           <select
             value={translationLanguage}
@@ -257,14 +259,14 @@ export default function UploadForm({ onSubmit, isLoading, submitDisabledReason }
             className="w-full rounded-lg border border-orange-200 bg-white px-3 py-2.5 text-sm shadow-sm focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-200"
           >
             {LANGUAGE_OPTIONS.map(option => (
-              <option key={option.value} value={option.value}>{option.label}</option>
+              <option key={option.value} value={option.value}>{t(option.labelKey)}</option>
             ))}
           </select>
         </div>
 
         <div>
           <label className="mb-1.5 block text-sm font-medium text-gray-700">
-            Stimme
+            {t('uploadVoice')}
           </label>
           <select
             value={voiceID}
@@ -276,14 +278,14 @@ export default function UploadForm({ onSubmit, isLoading, submitDisabledReason }
               ? VOICE_OPTIONS.filter(option => option.value === ENGLISH_US_VOICE_ID)
               : VOICE_OPTIONS
             ).map(option => (
-              <option key={option.value} value={option.value}>{option.label}</option>
+              <option key={option.value} value={option.value}>{t(option.labelKey)}</option>
             ))}
           </select>
         </div>
 
         <div>
           <label className="mb-1.5 block text-sm font-medium text-gray-700">
-            Ausgabe-Aufteilung
+            {t('uploadSplitting')}
           </label>
           <select
             value={splittingID}
@@ -291,7 +293,7 @@ export default function UploadForm({ onSubmit, isLoading, submitDisabledReason }
             className="w-full rounded-lg border border-orange-200 bg-white px-3 py-2.5 text-sm shadow-sm focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-200"
           >
             {SPLITTING_OPTIONS.map(option => (
-              <option key={option.value} value={option.value}>{option.label}</option>
+              <option key={option.value} value={option.value}>{t(option.labelKey)}</option>
             ))}
           </select>
         </div>
@@ -312,14 +314,14 @@ export default function UploadForm({ onSubmit, isLoading, submitDisabledReason }
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
             </svg>
-            Wird hochgeladen...
+            {t('uploadInProgress')}
           </>
         ) : (
           <>
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
             </svg>
-            Vertonung starten
+            {t('uploadStart')}
           </>
         )}
       </button>

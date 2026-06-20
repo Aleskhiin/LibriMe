@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import UploadForm from './components/UploadForm';
 import JobList from './components/JobList';
+import LanguageToggle from './components/LanguageToggle';
 import { createJob, listJobs, type JobRecord } from './api';
 import { useJobPolling } from './hooks/useJobPolling';
 import type { JobEntry } from './types';
 import librimeBg from './assets/librime_bg.png';
+import { useI18n } from './i18n';
 
 const SUPPORTED_FORMATS = [
   '.png',
@@ -37,6 +40,7 @@ function toJobEntry(job: JobRecord): JobEntry {
 }
 
 export default function App() {
+  const { t } = useI18n();
   const [jobs, setJobs] = useState<JobEntry[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [isLoadingJobs, setIsLoadingJobs] = useState(true);
@@ -44,9 +48,9 @@ export default function App() {
   const [listError, setListError] = useState<string | null>(null);
   const hasActiveJob = jobs.some(job => job.status === 'QUEUED' || job.status === 'RUNNING');
   const uploadDisabledReason = isLoadingJobs
-    ? 'Jobs werden geladen. Bitte warte kurz.'
+    ? t('appJobsLoadingBlock')
     : hasActiveJob
-      ? 'Bitte warte, bis der aktuell verarbeitete Job abgeschlossen ist.'
+      ? t('appActiveJobBlock')
       : undefined;
 
   const updateJob = useCallback((jobID: string, updates: Partial<JobEntry>) => {
@@ -65,7 +69,7 @@ export default function App() {
       const records = await listJobs();
       setJobs(records.map(toJobEntry));
     } catch (err) {
-      setListError(err instanceof Error ? err.message : 'Jobliste konnte nicht geladen werden.');
+      setListError(err instanceof Error ? err.message : t('appListError'));
     } finally {
       setIsLoadingJobs(false);
     }
@@ -98,7 +102,7 @@ export default function App() {
       };
       setJobs(prev => [newJob, ...prev]);
     } catch (err) {
-      setUploadError(err instanceof Error ? err.message : 'Unbekannter Fehler beim Upload.');
+      setUploadError(err instanceof Error ? err.message : t('appUploadUnknownError'));
     } finally {
       setIsUploading(false);
     }
@@ -106,7 +110,7 @@ export default function App() {
 
   const handleRetry = useCallback((jobID: string) => {
     setJobs(prev => prev.filter(job => job.jobID !== jobID));
-  }, []);
+  }, [t]);
 
   return (
     <div
@@ -120,6 +124,7 @@ export default function App() {
             <h1 className="text-xl font-bold tracking-tight text-stone-950">LibriMe</h1>
             <p className="text-xs italic text-stone-600">"Freedom starts in your ear."</p>
           </div>
+          <LanguageToggle />
         </div>
       </header>
 
@@ -127,9 +132,9 @@ export default function App() {
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
           <div>
             <div className="mb-6">
-              <h2 className="text-2xl font-bold text-stone-950">Neues Hörbuch erstellen</h2>
+              <h2 className="text-2xl font-bold text-stone-950">{t('appNewAudiobookTitle')}</h2>
               <p className="mt-1 text-sm text-stone-600">
-                Lade eine Datei hoch und wähle deine Einstellungen.
+                {t('appNewAudiobookSubtitle')}
               </p>
             </div>
 
@@ -151,7 +156,7 @@ export default function App() {
             </div>
 
             <div className="mt-4 rounded-xl border border-orange-200/80 bg-orange-100/80 px-4 py-3 text-orange-950">
-              <p className="text-xs font-medium">Unterstützte Formate</p>
+              <p className="text-xs font-medium">{t('appSupportedFormats')}</p>
               <p className="mt-0.5 text-xs text-orange-800">
                 {SUPPORTED_FORMATS}
               </p>
@@ -161,11 +166,11 @@ export default function App() {
           <div>
             <div className="mb-6 flex flex-wrap items-center justify-between gap-2">
               <div>
-                <h2 className="text-2xl font-bold text-stone-950">Meine Jobs</h2>
+                <h2 className="text-2xl font-bold text-stone-950">{t('appMyJobs')}</h2>
                 <p className="mt-1 text-sm text-stone-600">
                   {jobs.length === 0
-                    ? isLoadingJobs ? 'Aufträge werden geladen.' : 'Noch keine Aufträge gestartet.'
-                    : `${jobs.length} ${jobs.length === 1 ? 'Auftrag' : 'Aufträge'} insgesamt`}
+                    ? isLoadingJobs ? t('appJobsLoading') : t('appNoJobsStarted')
+                    : jobs.length === 1 ? t('appOneJobTotal') : t('appManyJobsTotal', { count: jobs.length })}
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -174,7 +179,7 @@ export default function App() {
                   disabled={isLoadingJobs}
                   className="rounded-lg px-3 py-1.5 text-xs font-medium text-orange-700 transition-colors hover:bg-orange-100 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  Aktualisieren
+                  {t('appRefresh')}
                 </button>
               </div>
             </div>
@@ -191,7 +196,12 @@ export default function App() {
       </main>
 
       <footer className="mt-16 border-t border-orange-200/70 bg-orange-50/70 py-6 text-center text-xs text-stone-500">
-        <p>LibriMe - Datei zu Hörbuch - Powered by OCR &amp; TTS</p>
+        <div className="mx-auto flex max-w-5xl flex-col items-center justify-center gap-2 px-6 sm:flex-row sm:gap-4">
+          <p>{t('appFooter')}</p>
+          <Link to="/impressum" className="font-medium text-orange-700 underline-offset-4 hover:underline">
+            {t('footerImprint')}
+          </Link>
+        </div>
       </footer>
     </div>
   );

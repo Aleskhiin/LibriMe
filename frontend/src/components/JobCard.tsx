@@ -1,17 +1,18 @@
 import { useState } from 'react';
 import type { JobEntry } from '../types';
 import { downloadJobResult, getResultUrl } from '../api';
+import { useI18n } from '../i18n';
 
 interface JobCardProps {
   job: JobEntry;
   onRetry: (jobID: string) => void;
 }
 
-const STATUS_LABELS: Record<JobEntry['status'], string> = {
-  QUEUED: 'Warteschlange',
-  RUNNING: 'Wird verarbeitet',
-  COMPLETED: 'Abgeschlossen',
-  FAILED: 'Fehlgeschlagen',
+const STATUS_LABEL_KEYS: Record<JobEntry['status'], string> = {
+  QUEUED: 'jobQueued',
+  RUNNING: 'jobRunning',
+  COMPLETED: 'jobCompleted',
+  FAILED: 'jobFailed',
 };
 
 const STATUS_COLORS: Record<JobEntry['status'], string> = {
@@ -21,27 +22,34 @@ const STATUS_COLORS: Record<JobEntry['status'], string> = {
   FAILED: 'bg-red-100 text-red-800',
 };
 
-const LANGUAGE_LABELS: Record<string, string> = {
-  en_US: 'English (US)',
-  de_DE: 'Deutsch',
-  fr_FR: 'Französisch',
-  es_ES: 'Spanisch',
+const LANGUAGE_LABEL_KEYS: Record<string, string> = {
+  en_US: 'optionEnglishUs',
+  de_DE: 'optionGerman',
+  fr_FR: 'optionFrench',
+  es_ES: 'optionSpanish',
 };
 
-const VOICE_LABELS: Record<string, string> = {
-  male_v1: 'Männlich (v1)',
-  female_v1: 'Weiblich (v1)',
+const VOICE_LABEL_KEYS: Record<string, string> = {
+  male_v1: 'optionMale',
+  female_v1: 'optionFemale',
 };
 
-function formatTime(date: Date | undefined): string {
+const SPLITTING_LABEL_KEYS: Record<string, string> = {
+  DOCUMENT: 'optionWholeDocument',
+  PAGE: 'optionPage',
+  PARAGRAPH: 'optionParagraph',
+};
+
+function formatTime(date: Date | undefined, fallbackLabel: string): string {
   if (!date || Number.isNaN(date.getTime())) {
-    return 'Gerade eben';
+    return fallbackLabel;
   }
 
   return date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
 }
 
 export default function JobCard({ job, onRetry }: JobCardProps) {
+  const { t } = useI18n();
   const [downloadError, setDownloadError] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
   const isActive = job.status === 'QUEUED' || job.status === 'RUNNING';
@@ -57,7 +65,7 @@ export default function JobCard({ job, onRetry }: JobCardProps) {
     try {
       await downloadJobResult(resultUrl, downloadFilename);
     } catch (err) {
-      setDownloadError(err instanceof Error ? err.message : 'Download fehlgeschlagen.');
+      setDownloadError(err instanceof Error ? err.message : t('jobDownloadFailed'));
     } finally {
       setIsDownloading(false);
     }
@@ -81,12 +89,12 @@ export default function JobCard({ job, onRetry }: JobCardProps) {
             </div>
             <div className="min-w-0">
               <p className="truncate font-semibold text-stone-800">{job.fileName}</p>
-              <p className="text-xs text-stone-500">{formatTime(job.createdAt)}</p>
+              <p className="text-xs text-stone-500">{formatTime(job.createdAt, t('jobJustNow'))}</p>
             </div>
           </div>
 
           <span className={`flex-shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${STATUS_COLORS[job.status]}`}>
-            {STATUS_LABELS[job.status]}
+            {t(STATUS_LABEL_KEYS[job.status])}
           </span>
         </div>
 
@@ -95,25 +103,25 @@ export default function JobCard({ job, onRetry }: JobCardProps) {
             <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
             </svg>
-            {LANGUAGE_LABELS[job.fileLanguage] ?? job.fileLanguage}
+            {LANGUAGE_LABEL_KEYS[job.fileLanguage] ? t(LANGUAGE_LABEL_KEYS[job.fileLanguage]) : job.fileLanguage}
             &nbsp;-&gt;&nbsp;
-            {LANGUAGE_LABELS[job.translationLanguage] ?? job.translationLanguage}
+            {LANGUAGE_LABEL_KEYS[job.translationLanguage] ? t(LANGUAGE_LABEL_KEYS[job.translationLanguage]) : job.translationLanguage}
           </span>
           <span className="inline-flex items-center gap-1 rounded-md bg-orange-100 px-2 py-1 text-xs text-orange-900">
             <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
             </svg>
-            {VOICE_LABELS[job.voiceID] ?? job.voiceID}
+            {VOICE_LABEL_KEYS[job.voiceID] ? t(VOICE_LABEL_KEYS[job.voiceID]) : job.voiceID}
           </span>
           <span className="inline-flex items-center rounded-md bg-orange-100 px-2 py-1 text-xs text-orange-900">
-            {job.splittingID}
+            {SPLITTING_LABEL_KEYS[job.splittingID] ? t(SPLITTING_LABEL_KEYS[job.splittingID]) : job.splittingID}
           </span>
         </div>
 
         {isActive && (
           <div className="mt-4">
             <div className="mb-1 flex items-center justify-between text-xs text-stone-500">
-              <span>{job.status === 'QUEUED' ? 'Warte auf Verarbeitung...' : 'Wird verarbeitet...'}</span>
+              <span>{job.status === 'QUEUED' ? t('jobWaiting') : t('jobProcessing')}</span>
               <span>{job.progress}%</span>
             </div>
             <div className="h-2 w-full overflow-hidden rounded-full bg-orange-100">
@@ -135,7 +143,7 @@ export default function JobCard({ job, onRetry }: JobCardProps) {
           <div className="mt-4 flex flex-wrap gap-2">
             <div className="w-full">
               <audio controls className="w-full rounded-lg" src={resultUrl}>
-                Dein Browser unterstützt kein Audio-Element.
+                {t('jobAudioUnsupported')}
               </audio>
             </div>
             {downloadError && (
@@ -152,7 +160,7 @@ export default function JobCard({ job, onRetry }: JobCardProps) {
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
-              {isDownloading ? 'Wird geladen...' : 'Herunterladen'}
+              {isDownloading ? t('jobDownloading') : t('jobDownload')}
             </button>
           </div>
         )}
@@ -166,7 +174,7 @@ export default function JobCard({ job, onRetry }: JobCardProps) {
               <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
-              Erneut versuchen
+              {t('jobRetry')}
             </button>
           </div>
         )}
