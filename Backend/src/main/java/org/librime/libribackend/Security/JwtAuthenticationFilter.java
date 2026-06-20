@@ -9,6 +9,8 @@ import org.librime.libribackend.DB.Repository.JobRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
@@ -45,12 +47,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String authenticatedUserId = null;
         boolean isGoogleAuth = false;
 
-        // 1. Try to extract and validate Google OAuth Token
+        // 1. Try to extract and validate Google OAuth Token or fallback to validating local JWT in the Authorization header
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            String googleJwt = authHeader.substring(7);
-            if (jwtUtil.validateGoogleToken(googleJwt)) {
-                authenticatedUserId = jwtUtil.extractGoogleUserId(googleJwt);
+            String jwt = authHeader.substring(7);
+            if (jwtUtil.validateGoogleToken(jwt)) {
+                authenticatedUserId = jwtUtil.extractGoogleUserId(jwt);
                 isGoogleAuth = true;
+            } else if (jwtUtil.validateToken(jwt)) {
+                authenticatedUserId = jwtUtil.extractUserId(jwt);
             }
         }
 
@@ -84,13 +88,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         anonymousUserId, authenticatedUserId, e.getMessage());
             }
 
-            // Clear the anonymous cookie
-            Cookie deleteCookie = new Cookie(COOKIE_NAME, null);
-            deleteCookie.setPath("/");
-            deleteCookie.setHttpOnly(true);
-            deleteCookie.setMaxAge(0);
-            deleteCookie.setSecure(true);
-            response.addCookie(deleteCookie);
+            // Clear the anonymous cookie using ResponseCookie with SameSite=None
+            ResponseCookie deleteCookie = ResponseCookie.from(COOKIE_NAME, "")
+                    .path("/")
+                    .httpOnly(true)
+                    .maxAge(0)
+                    .secure(true)
+                    .sameSite("None")
+                    .build();
+            response.addHeader(HttpHeaders.SET_COOKIE, deleteCookie.toString());
         }
 
         // 4. Fallback to existing local anonymous session logic if not logged in via Google
@@ -98,15 +104,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             if (anonymousUserId != null) {
                 authenticatedUserId = anonymousUserId;
             } else {
-                // Generate a new anonymous user session
+                // Generate a new anonymous user session and set ResponseCookie with SameSite=None
                 authenticatedUserId = UUID.randomUUID().toString();
                 String newLocalJwt = jwtUtil.generateToken(authenticatedUserId);
-                Cookie cookie = new Cookie(COOKIE_NAME, newLocalJwt);
-                cookie.setHttpOnly(true);
-                cookie.setPath("/");
-                cookie.setMaxAge(60 * 60 * 24 * 30); // 30 days
-                cookie.setSecure(true);
-                response.addCookie(cookie);
+                ResponseCookie cookie = ResponseCookie.from(COOKIE_NAME, newLocalJwt)
+                        .httpOnly(true)
+                        .secure(true)
+                        .path("/")
+                        .maxAge(60 * 60 * 24 * 30) // 30 days
+                        .sameSite("None")
+                        .build();
+                response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
             }
         }
 
