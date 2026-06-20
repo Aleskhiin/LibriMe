@@ -4,7 +4,6 @@ import { downloadJobResult, getResultUrl } from '../api';
 
 interface JobCardProps {
   job: JobEntry;
-  onDelete: (jobID: string) => void;
   onRetry: (jobID: string) => void;
 }
 
@@ -42,7 +41,7 @@ function formatTime(date: Date | undefined): string {
   return date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
 }
 
-export default function JobCard({ job, onDelete, onRetry }: JobCardProps) {
+export default function JobCard({ job, onRetry }: JobCardProps) {
   const [downloadError, setDownloadError] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
   const isActive = job.status === 'QUEUED' || job.status === 'RUNNING';
@@ -158,8 +157,8 @@ export default function JobCard({ job, onDelete, onRetry }: JobCardProps) {
           </div>
         )}
 
-        <div className="mt-3 flex items-center justify-end gap-2 border-t border-orange-100 pt-3">
-          {isFailed && (
+        {isFailed && (
+          <div className="mt-3 flex items-center justify-end gap-2 border-t border-orange-100 pt-3">
             <button
               onClick={() => onRetry(job.jobID)}
               className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium text-orange-700 transition-colors hover:bg-orange-100"
@@ -169,17 +168,8 @@ export default function JobCard({ job, onDelete, onRetry }: JobCardProps) {
               </svg>
               Erneut versuchen
             </button>
-          )}
-          <button
-            onClick={() => onDelete(job.jobID)}
-            className="inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium text-gray-500 transition-colors hover:bg-red-50 hover:text-red-600"
-          >
-            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-            </svg>
-            Entfernen
-          </button>
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -9,6 +9,7 @@ interface UploadFormProps {
     splittingID: string;
   }) => void;
   isLoading: boolean;
+  submitDisabledReason?: string;
 }
 
 const LANGUAGE_OPTIONS = [
@@ -55,7 +56,7 @@ const SPLITTING_OPTIONS = [
   { value: 'PARAGRAPH', label: 'Absatzweise' },
 ];
 
-export default function UploadForm({ onSubmit, isLoading }: UploadFormProps) {
+export default function UploadForm({ onSubmit, isLoading, submitDisabledReason }: UploadFormProps) {
   const [dragOver, setDragOver] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileLanguage, setFileLanguage] = useState('en_US');
@@ -111,6 +112,11 @@ export default function UploadForm({ onSubmit, isLoading }: UploadFormProps) {
 
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
+
+    if (submitDisabledReason) {
+      setError(submitDisabledReason);
+      return;
+    }
 
     if (!selectedFile) {
       setError('Bitte wähle eine Datei aus.');
@@ -216,6 +222,15 @@ export default function UploadForm({ onSubmit, isLoading }: UploadFormProps) {
         </div>
       )}
 
+      {submitDisabledReason && (
+        <div className="flex items-center gap-2 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          <svg className="h-4 w-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2 2a1 1 0 001.414-1.414L11 9.586V6z" clipRule="evenodd" />
+          </svg>
+          {submitDisabledReason}
+        </div>
+      )}
+
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
           <label className="mb-1.5 block text-sm font-medium text-gray-700">
@@ -284,7 +299,7 @@ export default function UploadForm({ onSubmit, isLoading }: UploadFormProps) {
 
       <button
         type="submit"
-        disabled={isLoading || !selectedFile}
+        disabled={isLoading || !selectedFile || Boolean(submitDisabledReason)}
         className="
           flex w-full items-center justify-center gap-2 rounded-xl bg-orange-600 px-6 py-3.5 text-base font-semibold text-white shadow-md shadow-orange-900/10
           transition-all duration-200 hover:bg-orange-700 hover:shadow-lg active:scale-[0.98]

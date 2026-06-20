@@ -3,11 +3,10 @@ import JobCard from './JobCard';
 
 interface JobListProps {
   jobs: JobEntry[];
-  onDelete: (jobID: string) => void;
   onRetry: (jobID: string) => void;
 }
 
-export default function JobList({ jobs, onDelete, onRetry }: JobListProps) {
+export default function JobList({ jobs, onRetry }: JobListProps) {
   if (jobs.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-orange-200 bg-orange-50/80 py-14 text-center">
@@ -39,7 +38,7 @@ export default function JobList({ jobs, onDelete, onRetry }: JobListProps) {
           </h3>
           <div className="space-y-3">
             {activeJobs.map(job => (
-              <JobCard key={job.jobID} job={job} onDelete={onDelete} onRetry={onRetry} />
+              <JobCard key={job.jobID} job={job} onRetry={onRetry} />
             ))}
           </div>
         </section>
@@ -55,7 +54,7 @@ export default function JobList({ jobs, onDelete, onRetry }: JobListProps) {
           </h3>
           <div className="space-y-3">
             {completedJobs.map(job => (
-              <JobCard key={job.jobID} job={job} onDelete={onDelete} onRetry={onRetry} />
+              <JobCard key={job.jobID} job={job} onRetry={onRetry} />
             ))}
           </div>
         </section>
@@ -71,7 +70,7 @@ export default function JobList({ jobs, onDelete, onRetry }: JobListProps) {
           </h3>
           <div className="space-y-3">
             {failedJobs.map(job => (
-              <JobCard key={job.jobID} job={job} onDelete={onDelete} onRetry={onRetry} />
+              <JobCard key={job.jobID} job={job} onRetry={onRetry} />
             ))}
           </div>
         </section>

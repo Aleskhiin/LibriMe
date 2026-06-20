@@ -42,6 +42,12 @@ export default function App() {
   const [isLoadingJobs, setIsLoadingJobs] = useState(true);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [listError, setListError] = useState<string | null>(null);
+  const hasActiveJob = jobs.some(job => job.status === 'QUEUED' || job.status === 'RUNNING');
+  const uploadDisabledReason = isLoadingJobs
+    ? 'Jobs werden geladen. Bitte warte kurz.'
+    : hasActiveJob
+      ? 'Bitte warte, bis der aktuell verarbeitete Job abgeschlossen ist.'
+      : undefined;
 
   const updateJob = useCallback((jobID: string, updates: Partial<JobEntry>) => {
     setJobs(prev =>
@@ -76,6 +82,11 @@ export default function App() {
     voiceID: string;
     splittingID: string;
   }) => {
+    if (uploadDisabledReason) {
+      setUploadError(uploadDisabledReason);
+      return;
+    }
+
     setIsUploading(true);
     setUploadError(null);
 
@@ -92,10 +103,6 @@ export default function App() {
       setIsUploading(false);
     }
   };
-
-  const handleDelete = useCallback((jobID: string) => {
-    setJobs(prev => prev.filter(job => job.jobID !== jobID));
-  }, []);
 
   const handleRetry = useCallback((jobID: string) => {
     setJobs(prev => prev.filter(job => job.jobID !== jobID));
@@ -127,7 +134,11 @@ export default function App() {
             </div>
 
             <div className="rounded-2xl border border-orange-100 bg-orange-50/85 p-6 shadow-sm shadow-orange-900/5 backdrop-blur-sm">
-              <UploadForm onSubmit={handleSubmit} isLoading={isUploading} />
+              <UploadForm
+                onSubmit={handleSubmit}
+                isLoading={isUploading}
+                submitDisabledReason={uploadDisabledReason}
+              />
 
               {uploadError && (
                 <div className="mt-4 flex items-start gap-2 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -174,7 +185,7 @@ export default function App() {
               </div>
             )}
 
-            <JobList jobs={jobs} onDelete={handleDelete} onRetry={handleRetry} />
+            <JobList jobs={jobs} onRetry={handleRetry} />
           </div>
         </div>
       </main>
