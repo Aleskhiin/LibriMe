@@ -7,12 +7,15 @@ import {
   signInWithPopup,
   signOut,
 } from 'firebase/auth';
+import { getRuntimeConfig } from '../runtimeConfig';
+
+const runtimeConfig = getRuntimeConfig();
 
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY ?? 'AIzaSyCLS4upLJ1miLntEeh-4Ba9ZhV8_v4KFaw',
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN ?? 'librime.firebaseapp.com',
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID ?? 'librime',
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  apiKey: runtimeConfig.firebaseApiKey ?? 'AIzaSyCLS4upLJ1miLntEeh-4Ba9ZhV8_v4KFaw',
+  authDomain: runtimeConfig.firebaseAuthDomain ?? 'librime.firebaseapp.com',
+  projectId: runtimeConfig.firebaseProjectId ?? 'librime',
+  appId: runtimeConfig.firebaseAppId,
 };
 
 const app = initializeApp(firebaseConfig);
