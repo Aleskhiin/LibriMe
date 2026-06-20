@@ -6,6 +6,7 @@ import App from './App.tsx'
 import LandingPage from './pages/LandingPage.tsx'
 import ImprintPage from './pages/ImprintPage.tsx'
 import { LanguageProvider } from './i18n.tsx'
+import { AuthProvider } from './auth/AuthProvider.tsx'
 
 //router-configuration
 const router = createBrowserRouter([
@@ -27,7 +28,9 @@ const router = createBrowserRouter([
 createRoot(document.getElementById('root')!).render(
     <StrictMode>
         <LanguageProvider>
-            <RouterProvider router={router} />
+            <AuthProvider>
+                <RouterProvider router={router} />
+            </AuthProvider>
         </LanguageProvider>
     </StrictMode>,
 )

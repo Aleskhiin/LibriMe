@@ -1,8 +1,9 @@
+import { auth } from './auth/firebase';
+
 const DEFAULT_BASE_URL = 'https://libribackend-4130931555.europe-west3.run.app';
 const BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? DEFAULT_BASE_URL).replace(/\/$/, '');
 const USES_LOCAL_API_PROXY = /^\/api(?:\/|$)/i.test(BASE_URL);
 const RESULT_BASE_URL = USES_LOCAL_API_PROXY ? BASE_URL : BASE_URL.replace(/\/api$/i, '');
-const AUTH_TOKEN_STORAGE_KEYS = ['accessToken', 'idToken', 'jwt', 'token', 'authToken'];
 
 export type JobState = 'QUEUED' | 'RUNNING' | 'COMPLETED' | 'FAILED';
 
@@ -41,28 +42,9 @@ export interface UpdateJobParams {
 
 type RawJobRecord = Record<string, unknown>;
 
-function getAuthToken(): string | null {
+async function withAuthHeaders(headers: HeadersInit = {}): Promise<HeadersInit> {
   const envToken = asString(import.meta.env.VITE_AUTH_TOKEN, '');
-  if (envToken) {
-    return envToken;
-  }
-
-  if (typeof window === 'undefined') {
-    return null;
-  }
-
-  for (const key of AUTH_TOKEN_STORAGE_KEYS) {
-    const token = window.localStorage.getItem(key) ?? window.sessionStorage.getItem(key);
-    if (token) {
-      return token;
-    }
-  }
-
-  return null;
-}
-
-function withAuthHeaders(headers: HeadersInit = {}): HeadersInit {
-  const token = getAuthToken();
+  const token = envToken || await auth.currentUser?.getIdToken();
   if (!token) {
     return headers;
   }
@@ -73,10 +55,11 @@ function withAuthHeaders(headers: HeadersInit = {}): HeadersInit {
   };
 }
 
-function authenticatedFetch(input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> {
+async function authenticatedFetch(input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> {
   return fetch(input, {
     ...init,
-    headers: withAuthHeaders(init.headers),
+    credentials: 'include',
+    headers: await withAuthHeaders(init.headers),
   });
 }
 

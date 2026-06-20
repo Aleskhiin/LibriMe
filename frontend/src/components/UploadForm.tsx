@@ -10,6 +10,7 @@ interface UploadFormProps {
     splittingID: string;
   }) => void;
   isLoading: boolean;
+  maxFileSizeMB: number;
   submitDisabledReason?: string;
 }
 
@@ -57,7 +58,7 @@ const SPLITTING_OPTIONS = [
   { value: 'PARAGRAPH', labelKey: 'optionParagraph' },
 ];
 
-export default function UploadForm({ onSubmit, isLoading, submitDisabledReason }: UploadFormProps) {
+export default function UploadForm({ onSubmit, isLoading, maxFileSizeMB, submitDisabledReason }: UploadFormProps) {
   const { t } = useI18n();
   const [dragOver, setDragOver] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -77,14 +78,14 @@ export default function UploadForm({ onSubmit, isLoading, submitDisabledReason }
       return false;
     }
 
-    if (file.size > 50 * 1024 * 1024) {
-      setError(t('uploadTooLarge'));
+    if (file.size > maxFileSizeMB * 1024 * 1024) {
+      setError(t('uploadTooLargeWithLimit', { limit: maxFileSizeMB }));
       return false;
     }
 
     setError(null);
     return true;
-  }, [t]);
+  }, [maxFileSizeMB, t]);
 
   const handleDrop = useCallback((event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();

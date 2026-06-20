@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import AuthMenu from '../components/AuthMenu';
 import LanguageToggle from '../components/LanguageToggle';
 import librimeBg from '../assets/librime_bg.png';
 import { useI18n } from '../i18n';
@@ -37,6 +38,7 @@ export default function ImprintPage() {
             <h1 className="text-xl font-bold tracking-tight text-stone-950">LibriMe</h1>
             <p className="text-xs italic text-stone-600">"Freedom starts in your ear."</p>
           </div>
+          <AuthMenu />
           <LanguageToggle />
         </div>
       </header>

@@ -2,12 +2,14 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import UploadForm from './components/UploadForm';
 import JobList from './components/JobList';
+import AuthMenu from './components/AuthMenu';
 import LanguageToggle from './components/LanguageToggle';
 import { createJob, listJobs, type JobRecord } from './api';
 import { useJobPolling } from './hooks/useJobPolling';
 import type { JobEntry } from './types';
 import librimeBg from './assets/librime_bg.png';
 import { useI18n } from './i18n';
+import { useAuth } from './auth/AuthProvider';
 
 const SUPPORTED_FORMATS = [
   '.png',
@@ -41,11 +43,13 @@ function toJobEntry(job: JobRecord): JobEntry {
 
 export default function App() {
   const { t } = useI18n();
+  const { user } = useAuth();
   const [jobs, setJobs] = useState<JobEntry[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [isLoadingJobs, setIsLoadingJobs] = useState(true);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [listError, setListError] = useState<string | null>(null);
+  const maxFileSizeMB = user ? 50 : 10;
   const hasActiveJob = jobs.some(job => job.status === 'QUEUED' || job.status === 'RUNNING');
   const uploadDisabledReason = isLoadingJobs
     ? t('appJobsLoadingBlock')
@@ -73,7 +77,7 @@ export default function App() {
     } finally {
       setIsLoadingJobs(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     loadJobs();
@@ -110,7 +114,7 @@ export default function App() {
 
   const handleRetry = useCallback((jobID: string) => {
     setJobs(prev => prev.filter(job => job.jobID !== jobID));
-  }, [t]);
+  }, []);
 
   return (
     <div
@@ -124,6 +128,7 @@ export default function App() {
             <h1 className="text-xl font-bold tracking-tight text-stone-950">LibriMe</h1>
             <p className="text-xs italic text-stone-600">"Freedom starts in your ear."</p>
           </div>
+          <AuthMenu />
           <LanguageToggle />
         </div>
       </header>
@@ -142,6 +147,7 @@ export default function App() {
               <UploadForm
                 onSubmit={handleSubmit}
                 isLoading={isUploading}
+                maxFileSizeMB={maxFileSizeMB}
                 submitDisabledReason={uploadDisabledReason}
               />
 
@@ -159,6 +165,9 @@ export default function App() {
               <p className="text-xs font-medium">{t('appSupportedFormats')}</p>
               <p className="mt-0.5 text-xs text-orange-800">
                 {SUPPORTED_FORMATS}
+              </p>
+              <p className="mt-1 text-xs font-medium text-orange-900">
+                {t('appUploadLimit', { limit: maxFileSizeMB })}
               </p>
             </div>
           </div>
