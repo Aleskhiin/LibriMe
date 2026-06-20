@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import type { JobEntry } from '../types';
-import { getResultUrl } from '../api';
+import { downloadJobResult, getResultUrl } from '../api';
 
 interface JobCardProps {
   job: JobEntry;
@@ -37,10 +38,26 @@ function formatTime(date: Date | undefined): string {
 }
 
 export default function JobCard({ job, onDelete, onRetry }: JobCardProps) {
+  const [downloadError, setDownloadError] = useState<string | null>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
   const isActive = job.status === 'QUEUED' || job.status === 'RUNNING';
   const isCompleted = job.status === 'COMPLETED';
   const isFailed = job.status === 'FAILED';
   const resultUrl = job.downloadURL ?? getResultUrl(job.jobID);
+  const downloadFilename = `${job.fileName.replace(/\.[^/.]+$/, '')}.wav`;
+
+  const handleDownload = async () => {
+    setIsDownloading(true);
+    setDownloadError(null);
+
+    try {
+      await downloadJobResult(resultUrl, downloadFilename);
+    } catch (err) {
+      setDownloadError(err instanceof Error ? err.message : 'Download fehlgeschlagen.');
+    } finally {
+      setIsDownloading(false);
+    }
+  };
 
   return (
     <div className={`
@@ -117,16 +134,22 @@ export default function JobCard({ job, onDelete, onRetry }: JobCardProps) {
                 Dein Browser unterstuetzt kein Audio-Element.
               </audio>
             </div>
-            <a
-              href={resultUrl}
-              download={`${job.fileName.replace(/\.[^/.]+$/, '')}.mp3`}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-indigo-700"
+            {downloadError && (
+              <div className="w-full rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">
+                {downloadError}
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={handleDownload}
+              disabled={isDownloading}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
-              Herunterladen
-            </a>
+              {isDownloading ? 'Wird geladen...' : 'Herunterladen'}
+            </button>
           </div>
         )}
 
