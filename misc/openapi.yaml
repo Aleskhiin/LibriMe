@@ -4,9 +4,43 @@ info:
   description: API zum Vertonen von PDFs und Bildern (OCR + TTS)
   version: 1.0.0
 
+servers:
+  - url: http://localhost:8080
+    description: Lokaler Entwicklungsserver
+
+security:
+  - bearerAuth: []
+
 paths:
-  # 1. Job erstellen (Datei hochladen)
+  /health:
+    get:
+      summary: Health Check
+      description: Prüft, ob der Backend-Service läuft.
+      operationId: healthCheck
+      security: []
+      responses:
+        '200':
+          description: OK
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "LibriMe Backend is running!"
+
   /jobs:
+    get:
+      summary: Alle Jobs des Benutzers abrufen
+      description: Gibt eine Liste aller Jobs zurück, die der aktuell authentifizierte Benutzer erstellt hat.
+      operationId: getAllJobs
+      responses:
+        '200':
+          description: Liste der Jobs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StatusJobRecord'
     post:
       summary: Einen neuen Vertonungs-Job erstellen
       description: Lädt ein PDF oder Bild hoch, um es in Audio umzuwandeln.
@@ -14,7 +48,7 @@ paths:
       requestBody:
         required: true
         content:
-          multipart/form-data: # Wichtig für Datei-Uploads
+          multipart/form-data:
             schema:
               type: object
               properties:
@@ -23,41 +57,38 @@ paths:
                   format: binary
                   description: Das PDF oder Bild (png/jpg)
                 fileLanguage:
-                  type: string
-                  example: "en-US"
-                  description: Ausgangssprache der Datei
+                  $ref: '#/components/schemas/LanguageType'
                 translationLanguage:
-                  type: string
-                  example: "en-US"
-                  description: Zielsprache für die Stimme
-                voiceId:
-                  type: string
-                  example: "male-v1"
-                  description: ID für eine spezifische Stimme
-                splittingId:
-                  type: string
-                  example: "DOCUMENT"
-                  description: ID für die Aufteilung der Ausgabefiles
+                  $ref: '#/components/schemas/LanguageType'
+                voiceID:
+                  $ref: '#/components/schemas/VoiceType'
+                splittingID:
+                  $ref: '#/components/schemas/SplittingType'
               required:
                 - file
+                - fileLanguage
+                - translationLanguage
+                - voiceID
+                - splittingID
       responses:
         '202':
           description: Akzeptiert. Die Verarbeitung hat begonnen.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/JobCreatedResponse'
+                $ref: '#/components/schemas/NewJobRecord'
         '400':
-          description: Ungültige Eingabe (z.B. falsches Dateiformat)
+          description: Ungültige Eingabe
+        '401':
+          description: Nicht authentifiziert
 
-  # 2. Status abfragen
-  /jobs/{jobId}:
+  /jobs/{jobID}:
     get:
       summary: Status eines Jobs abrufen
-      description: Gibt zurück, ob der Job noch läuft, fertig ist oder fehlgeschlagen ist.
+      description: Gibt den aktuellen Status und Fortschritt eines Jobs zurück.
       operationId: getJobStatus
       parameters:
-        - name: jobId
+        - name: jobID
           in: path
           required: true
           schema:
@@ -69,18 +100,60 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/JobStatusResponse'
+                $ref: '#/components/schemas/StatusJobRecord'
+        '401':
+          description: Nicht authentifiziert
+        '403':
+          description: Nicht autorisiert (Job gehört einem anderen Benutzer)
         '404':
           description: Job nicht gefunden
 
-  # 3. Ergebnis herunterladen
-  /jobs/{jobId}/result:
+    put:
+      summary: Job-Status aktualisieren (Intern/Worker)
+      description: Wird von der AI-Komponente verwendet, um den Fortschritt und Status zu aktualisieren.
+      operationId: updateJobStatus
+      security: [] # In SecurityConfig.java als permitAll konfiguriert
+      parameters:
+        - name: jobID
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: status
+          in: query
+          required: true
+          schema:
+            $ref: '#/components/schemas/StatusType'
+        - name: progress
+          in: query
+          required: true
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 100
+        - name: outputFilePath
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Job erfolgreich aktualisiert
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusJobRecord'
+        '404':
+          description: Job nicht gefunden
+
+  /jobs/{jobID}/result:
     get:
       summary: Die fertige Audiodatei herunterladen
-      description: Gibt den MP3/WAV Stream zurück, wenn der Job fertig ist.
+      description: Gibt die Audiodatei zurück oder leitet zu einer externen URL weiter.
       operationId: getJobResult
       parameters:
-        - name: jobId
+        - name: jobID
           in: path
           required: true
           schema:
@@ -94,60 +167,86 @@ paths:
               schema:
                 type: string
                 format: binary
+        '302':
+          description: Weiterleitung zur Download-URL (z.B. GCS Signed URL)
+        '401':
+          description: Nicht authentifiziert
+        '403':
+          description: Nicht autorisiert
         '404':
-          description: Job nicht gefunden oder noch nicht fertig
-        '409':
-          description: Job ist noch in Bearbeitung (Conflict)
+          description: Job nicht gefunden oder Ergebnis nicht verfügbar
 
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
   schemas:
-    # Antwort nach dem Upload
-    JobCreatedResponse:
+    NewJobRecord:
       type: object
       properties:
-        jobId:
+        jobID:
           type: string
           format: uuid
-          example: "123e4567-e89b-12d3-a456-426614174000"
         status:
-          $ref: '#/components/schemas/JobState'
+          $ref: '#/components/schemas/StatusType'
         message:
           type: string
-          example: "Datei hochgeladen, Verarbeitung beginnt."
-        statusURL:
+        StatusURL:
           type: string
-          description: "Link zur Status Jobstatusabfrage"
-          example: "../jobs/123/"
+          description: Link zur Statusabfrage
 
-    # Antwort beim Polling
-    JobStatusResponse:
+    StatusJobRecord:
       type: object
       properties:
-        jobId:
+        jobID:
           type: string
           format: uuid
         status:
-          $ref: '#/components/schemas/JobState'
+          $ref: '#/components/schemas/StatusType'
         progress:
           type: integer
-          minimum: 0
-          maximum: 100
-          description: Fortschritt in Prozent (optional)
-          example: 45
-        downloadUrl:
+        downloadURL:
           type: string
-          format: uri
-          description: Link zum Ergebnis (nur vorhanden, wenn status=COMPLETED)
-          example: ".../jobs/123/result"
         error:
           type: string
-          description: Fehlermeldung, falls status=FAILED
 
-    # Enum für den Status
-    JobState:
+    StatusType:
       type: string
       enum:
-        - QUEUED      # In der Warteschlange
-        - PROCESSING  # Wird gerade verarbeitet
-        - COMPLETED   # Fertig, kann heruntergeladen werden
-        - FAILED      # Fehler aufgetreten
+        - QUEUED
+        - RUNNING
+        - COMPLETED
+        - FAILED
+
+    LanguageType:
+      type: string
+      enum:
+        - en_US
+
+    VoiceType:
+      type: string
+      enum:
+        - male_v1
+
+    SplittingType:
+      type: string
+      enum:
+        - PAGE
+        - DOCUMENT
+        - PARAGRAPH
+
+    ErrorResponse:
+      type: object
+      properties:
+        status:
+          type: integer
+        message:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        path:
+          type: string

@@ -30,7 +30,7 @@ public class Job {
     private StatusType status;
     private int progress;
     private Date timecreated;
-    private long userID;
+    private String userId;
 
     public Job() {
         // Default constructor
@@ -54,7 +54,7 @@ public class Job {
         this.status = status;
         this.progress = 0;
         this.timecreated = new Date();
-        this.userID = 0;
+        this.userId = "";
     }
 
     // Getters
@@ -102,8 +102,8 @@ public class Job {
         return timecreated;
     }
 
-    public long getUserID() {
-        return userID;
+    public String getUserId() {
+        return userId;
     }
 
     // Setters
@@ -147,7 +147,7 @@ public class Job {
         this.timecreated = timecreated;
     }
 
-    public void setUserID(long userID) {
-        this.userID = userID;
+    public void setUserId(String userId) {
+        this.userId = userId;
     }
 }
