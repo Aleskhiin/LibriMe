@@ -1,16 +1,20 @@
 import { useNavigate } from 'react-router-dom';
+import librimeBg from '../assets/librime_bg.png';
 
 export default function LandingPage() {
   const navigate = useNavigate();
 
   return (
-    <div className="flex min-h-screen flex-col bg-gradient-to-br from-slate-50 via-indigo-50/30 to-slate-100">
-      <header className="border-b border-white/60 bg-white/70 backdrop-blur-sm">
+    <div
+      className="flex min-h-screen flex-col bg-cover bg-center bg-fixed text-stone-900"
+      style={{ backgroundImage: `linear-gradient(rgba(255, 247, 237, 0.82), rgba(255, 237, 213, 0.74)), url(${librimeBg})` }}
+    >
+      <header className="border-b border-orange-200/70 bg-orange-50/80 backdrop-blur-sm">
         <div className="mx-auto flex max-w-5xl items-center gap-4 px-6 py-4">
           <img src="/logo.png" alt="LibriMe Logo" className="h-9 w-auto" />
           <div className="min-w-0 flex-1">
-            <h1 className="text-xl font-bold tracking-tight text-gray-900">LibriMe</h1>
-            <p className="text-xs italic text-gray-500">"Freedom starts in your ear."</p>
+            <h1 className="text-xl font-bold tracking-tight text-stone-950">LibriMe</h1>
+            <p className="text-xs italic text-stone-600">"Freedom starts in your ear."</p>
           </div>
         </div>
       </header>
@@ -18,10 +22,10 @@ export default function LandingPage() {
       <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col items-center justify-center px-6 py-16 text-center">
         <img src="/logoBig.png" alt="LibriMe" className="mb-8 h-24 w-auto" />
 
-        <h2 className="max-w-2xl text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl">
-          Verwandle PDFs in Hörbücher
+        <h2 className="max-w-2xl text-4xl font-bold tracking-tight text-stone-950 sm:text-5xl">
+          Verwandle Dateien in Hörbücher
         </h2>
-        <p className="mt-4 max-w-xl text-base text-gray-500 sm:text-lg">
+        <p className="mt-4 max-w-xl text-base text-stone-600 sm:text-lg">
           Lade dein Dokument hoch und LibriMe erstellt dir automatisch eine hochwertige
           Audio-Version.
         </p>
@@ -29,8 +33,8 @@ export default function LandingPage() {
         <button
           onClick={() => navigate('/app')}
           className="
-            mt-10 flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-8 py-4 text-base font-semibold text-white shadow-md
-            transition-all duration-200 hover:bg-indigo-700 hover:shadow-lg active:scale-[0.98]
+            mt-10 flex items-center justify-center gap-2 rounded-xl bg-orange-600 px-8 py-4 text-base font-semibold text-white shadow-md shadow-orange-900/10
+            transition-all duration-200 hover:bg-orange-700 hover:shadow-lg active:scale-[0.98]
           "
         >
           Zur App
@@ -40,40 +44,40 @@ export default function LandingPage() {
         </button>
 
         <div className="mt-16 grid grid-cols-1 gap-6 sm:grid-cols-3">
-          <div className="rounded-2xl border border-white bg-white/80 p-6 text-left shadow-sm backdrop-blur-sm">
-            <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-indigo-50">
-              <svg className="h-5 w-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className="rounded-2xl border border-orange-100 bg-orange-50/85 p-6 text-left shadow-sm shadow-orange-900/5 backdrop-blur-sm">
+            <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-orange-100">
+              <svg className="h-5 w-5 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
             </div>
-            <p className="font-semibold text-gray-800">Dokumente hochladen</p>
-            <p className="mt-1 text-sm text-gray-500">Einfach per Drag &amp; Drop oder Dateiauswahl, bis 50&nbsp;MB.</p>
+            <p className="font-semibold text-stone-800">Dokumente hochladen</p>
+            <p className="mt-1 text-sm text-stone-600">Einfach per Drag &amp; Drop oder Dateiauswahl, bis 50&nbsp;MB.</p>
           </div>
 
-          <div className="rounded-2xl border border-white bg-white/80 p-6 text-left shadow-sm backdrop-blur-sm">
-            <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-indigo-50">
-              <svg className="h-5 w-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className="rounded-2xl border border-orange-100 bg-orange-50/85 p-6 text-left shadow-sm shadow-orange-900/5 backdrop-blur-sm">
+            <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-orange-100">
+              <svg className="h-5 w-5 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
               </svg>
             </div>
-            <p className="font-semibold text-gray-800">Automatische Vertonung</p>
-            <p className="mt-1 text-sm text-gray-500">Text-Extraktion und Sprachsynthese laufen vollautomatisch im Hintergrund.</p>
+            <p className="font-semibold text-stone-800">Automatische Vertonung</p>
+            <p className="mt-1 text-sm text-stone-600">Text-Extraktion und Sprachsynthese laufen vollautomatisch im Hintergrund.</p>
           </div>
 
-          <div className="rounded-2xl border border-white bg-white/80 p-6 text-left shadow-sm backdrop-blur-sm">
-            <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-indigo-50">
-              <svg className="h-5 w-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className="rounded-2xl border border-orange-100 bg-orange-50/85 p-6 text-left shadow-sm shadow-orange-900/5 backdrop-blur-sm">
+            <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-orange-100">
+              <svg className="h-5 w-5 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 13l4 4L19 7" />
               </svg>
             </div>
-            <p className="font-semibold text-gray-800">Fertig zum Anhören</p>
-            <p className="mt-1 text-sm text-gray-500">Fortschritt live verfolgen und das fertige Hörbuch direkt herunterladen.</p>
+            <p className="font-semibold text-stone-800">Fertig zum Anhören</p>
+            <p className="mt-1 text-sm text-stone-600">Fortschritt live verfolgen und das fertige Hörbuch direkt herunterladen.</p>
           </div>
         </div>
       </main>
 
-      <footer className="border-t border-gray-200 bg-white/50 py-6 text-center text-xs text-gray-400">
-        <p>LibriMe - PDF zu Hoerbuch.</p>
+      <footer className="border-t border-orange-200/70 bg-orange-50/70 py-6 text-center text-xs text-stone-500">
+        <p>LibriMe - Datei zu Hörbuch.</p>
       </footer>
     </div>
   );

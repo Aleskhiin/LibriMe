@@ -13,11 +13,41 @@ interface UploadFormProps {
 
 const LANGUAGE_OPTIONS = [
   { value: 'en_US', label: 'English (US)' },
+  { value: 'de_DE', label: 'Deutsch' },
+  { value: 'fr_FR', label: 'Französisch' },
 ];
 
 const VOICE_OPTIONS = [
-  { value: 'male_v1', label: 'Maennlich (v1)' },
+  { value: 'male_v1', label: 'Männlich (v1)' },
+  { value: 'female_v1', label: 'Weiblich (v1)' },
 ];
+
+const ENGLISH_US_VOICE_ID = 'female_v1';
+
+const ACCEPTED_FILE_EXTENSIONS = [
+  '.png',
+  '.jpg',
+  '.jpeg',
+  '.bmp',
+  '.tif',
+  '.tiff',
+  '.webp',
+  '.pdf',
+  '.txt',
+  '.md',
+  '.markdown',
+  '.doc',
+  '.docx',
+  '.odt',
+  '.ppt',
+  '.pptx',
+  '.html',
+  '.htm',
+  '.csv',
+  '.json',
+];
+
+const ACCEPTED_FILE_TYPES = ACCEPTED_FILE_EXTENSIONS.join(',');
 
 const SPLITTING_OPTIONS = [
   { value: 'DOCUMENT', label: 'Ganzes Dokument' },
@@ -30,19 +60,22 @@ export default function UploadForm({ onSubmit, isLoading }: UploadFormProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileLanguage, setFileLanguage] = useState('en_US');
   const [translationLanguage, setTranslationLanguage] = useState('en_US');
-  const [voiceID, setVoiceID] = useState('male_v1');
+  const [voiceID, setVoiceID] = useState(ENGLISH_US_VOICE_ID);
   const [splittingID, setSplittingID] = useState('DOCUMENT');
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const validateFile = (file: File): boolean => {
-    if (file.type !== 'application/pdf') {
-      setError('Nur PDF-Dateien sind erlaubt.');
+    const fileName = file.name.toLowerCase();
+    const hasAcceptedExtension = ACCEPTED_FILE_EXTENSIONS.some(extension => fileName.endsWith(extension));
+
+    if (!hasAcceptedExtension) {
+      setError('Dieses Dateiformat wird nicht unterstützt.');
       return false;
     }
 
     if (file.size > 50 * 1024 * 1024) {
-      setError('Die Datei darf maximal 50 MB gross sein.');
+      setError('Die Datei darf maximal 50 MB groß sein.');
       return false;
     }
 
@@ -80,11 +113,26 @@ export default function UploadForm({ onSubmit, isLoading }: UploadFormProps) {
     event.preventDefault();
 
     if (!selectedFile) {
-      setError('Bitte waehle eine PDF-Datei aus.');
+      setError('Bitte wähle eine Datei aus.');
       return;
     }
 
-    onSubmit({ file: selectedFile, fileLanguage, translationLanguage, voiceID, splittingID });
+    onSubmit({
+      file: selectedFile,
+      fileLanguage,
+      translationLanguage,
+      voiceID: translationLanguage === 'en_US' ? ENGLISH_US_VOICE_ID : voiceID,
+      splittingID,
+    });
+  };
+
+  const handleTranslationLanguageChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    const nextTranslationLanguage = event.target.value;
+    setTranslationLanguage(nextTranslationLanguage);
+
+    if (nextTranslationLanguage === 'en_US') {
+      setVoiceID(ENGLISH_US_VOICE_ID);
+    }
   };
 
   const clearSelectedFile = (event: React.MouseEvent<HTMLButtonElement>) => {
@@ -111,17 +159,17 @@ export default function UploadForm({ onSubmit, isLoading }: UploadFormProps) {
         className={`
           relative cursor-pointer rounded-2xl border-2 border-dashed p-10 text-center transition-all duration-200
           ${dragOver
-            ? 'scale-[1.01] border-indigo-500 bg-indigo-50'
+            ? 'scale-[1.01] border-orange-500 bg-orange-100'
             : selectedFile
               ? 'border-green-400 bg-green-50'
-              : 'border-gray-300 bg-gray-50 hover:border-indigo-400 hover:bg-indigo-50'
+              : 'border-orange-200 bg-white/80 hover:border-orange-400 hover:bg-orange-50'
           }
         `}
       >
         <input
           ref={fileInputRef}
           type="file"
-          accept=".pdf"
+          accept={ACCEPTED_FILE_TYPES}
           className="hidden"
           onChange={handleFileChange}
         />
@@ -147,16 +195,14 @@ export default function UploadForm({ onSubmit, isLoading }: UploadFormProps) {
           </div>
         ) : (
           <div className="flex flex-col items-center gap-3">
-            <div className={`flex h-14 w-14 items-center justify-center rounded-full transition-colors ${dragOver ? 'bg-indigo-100' : 'bg-gray-100'}`}>
-              <svg className={`h-7 w-7 transition-colors ${dragOver ? 'text-indigo-600' : 'text-gray-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <div className={`flex h-14 w-14 items-center justify-center rounded-full transition-colors ${dragOver ? 'bg-orange-200' : 'bg-orange-100'}`}>
+              <svg className={`h-7 w-7 transition-colors ${dragOver ? 'text-orange-700' : 'text-orange-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
             </div>
             <div>
-              <p className="font-semibold text-gray-700">PDF-Datei hier ablegen</p>
-              <p className="text-sm text-gray-500">oder klicken zum Auswaehlen</p>
+              <p className="font-semibold text-stone-800">Datei hier ablegen oder klicken zum Auswählen</p>
             </div>
-            <p className="text-xs text-gray-400">PDF-Dateien bis 50 MB</p>
           </div>
         )}
       </div>
@@ -178,7 +224,7 @@ export default function UploadForm({ onSubmit, isLoading }: UploadFormProps) {
           <select
             value={fileLanguage}
             onChange={(event) => setFileLanguage(event.target.value)}
-            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+            className="w-full rounded-lg border border-orange-200 bg-white px-3 py-2.5 text-sm shadow-sm focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-200"
           >
             {LANGUAGE_OPTIONS.map(option => (
               <option key={option.value} value={option.value}>{option.label}</option>
@@ -192,8 +238,8 @@ export default function UploadForm({ onSubmit, isLoading }: UploadFormProps) {
           </label>
           <select
             value={translationLanguage}
-            onChange={(event) => setTranslationLanguage(event.target.value)}
-            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+            onChange={handleTranslationLanguageChange}
+            className="w-full rounded-lg border border-orange-200 bg-white px-3 py-2.5 text-sm shadow-sm focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-200"
           >
             {LANGUAGE_OPTIONS.map(option => (
               <option key={option.value} value={option.value}>{option.label}</option>
@@ -208,9 +254,13 @@ export default function UploadForm({ onSubmit, isLoading }: UploadFormProps) {
           <select
             value={voiceID}
             onChange={(event) => setVoiceID(event.target.value)}
-            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+            disabled={translationLanguage === 'en_US'}
+            className="w-full rounded-lg border border-orange-200 bg-white px-3 py-2.5 text-sm shadow-sm focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-200 disabled:cursor-not-allowed disabled:bg-orange-50 disabled:text-stone-500"
           >
-            {VOICE_OPTIONS.map(option => (
+            {(translationLanguage === 'en_US'
+              ? VOICE_OPTIONS.filter(option => option.value === ENGLISH_US_VOICE_ID)
+              : VOICE_OPTIONS
+            ).map(option => (
               <option key={option.value} value={option.value}>{option.label}</option>
             ))}
           </select>
@@ -223,7 +273,7 @@ export default function UploadForm({ onSubmit, isLoading }: UploadFormProps) {
           <select
             value={splittingID}
             onChange={(event) => setSplittingID(event.target.value)}
-            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+            className="w-full rounded-lg border border-orange-200 bg-white px-3 py-2.5 text-sm shadow-sm focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-200"
           >
             {SPLITTING_OPTIONS.map(option => (
               <option key={option.value} value={option.value}>{option.label}</option>
@@ -236,8 +286,8 @@ export default function UploadForm({ onSubmit, isLoading }: UploadFormProps) {
         type="submit"
         disabled={isLoading || !selectedFile}
         className="
-          flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-6 py-3.5 text-base font-semibold text-white shadow-md
-          transition-all duration-200 hover:bg-indigo-700 hover:shadow-lg active:scale-[0.98]
+          flex w-full items-center justify-center gap-2 rounded-xl bg-orange-600 px-6 py-3.5 text-base font-semibold text-white shadow-md shadow-orange-900/10
+          transition-all duration-200 hover:bg-orange-700 hover:shadow-lg active:scale-[0.98]
           disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none
         "
       >
