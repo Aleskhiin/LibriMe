@@ -14,36 +14,36 @@ This frontend is built as a Cloud Run container and reads runtime values from `r
 gcloud iam service-accounts create librime-frontend-sa \
   --display-name="LibriMe Frontend Service Account"
 
-gcloud projects add-iam-policy-binding PROJECT_ID \
-  --member="serviceAccount:librime-frontend-sa@PROJECT_ID.iam.gserviceaccount.com" \
+gcloud projects add-iam-policy-binding librime \
+  --member="serviceAccount:librime-frontend-sa@librime.iam.gserviceaccount.com" \
   --role="roles/storage.objectViewer"
 
-gcloud projects add-iam-policy-binding PROJECT_ID \
-  --member="serviceAccount:librime-frontend-sa@PROJECT_ID.iam.gserviceaccount.com" \
+gcloud projects add-iam-policy-binding librime \
+  --member="serviceAccount:librime-frontend-sa@librime.iam.gserviceaccount.com" \
   --role="roles/iam.serviceAccountTokenCreator"
 ```
 
 ## Build
 
 ```bash
-gcloud builds submit --tag eu.gcr.io/PROJECT_ID/librifrontend .
+gcloud builds submit --tag eu.gcr.io/librime/librifrontend ./frontend
 ```
 
 ## Deploy
 
 ```bash
 gcloud run deploy librifrontend \
-  --image eu.gcr.io/PROJECT_ID/librifrontend \
+  --image eu.gcr.io/librime/librifrontend \
   --platform managed \
   --region europe-west3 \
-  --service-account=librime-frontend-sa@PROJECT_ID.iam.gserviceaccount.com \
+  --service-account=librime-frontend-sa@librime.iam.gserviceaccount.com \
   --allow-unauthenticated \
-  --set-env-vars="BACKEND_URL=https://YOUR-BACKEND-URL,\
-GCS_BUCKET_NAME=YOUR_BUCKET_NAME,\
-VITE_FIREBASE_API_KEY=YOUR_FIREBASE_API_KEY,\
-VITE_FIREBASE_AUTH_DOMAIN=YOUR_PROJECT.firebaseapp.com,\
-VITE_FIREBASE_PROJECT_ID=YOUR_PROJECT_ID,\
-VITE_FIREBASE_APP_ID=YOUR_FIREBASE_APP_ID"
+  --set-env-vars="BACKEND_URL=https://libribackend-4130931555.europe-west3.run.app,\
+GCS_BUCKET_NAME=librime-assets-1,\
+VITE_FIREBASE_API_KEY=AIzaSyCLS4upLJ1miLntEeh-4Ba9ZhV8_v4KFaw,\
+VITE_FIREBASE_AUTH_DOMAIN=librime.firebaseapp.com,\
+VITE_FIREBASE_PROJECT_ID=librime,\
+VITE_FIREBASE_APP_ID=1:4130931555:web:a1b2c3d4e5f6g7"
 ```
 
 The frontend does not need a build-time backend URL. Cloud Run injects the runtime config through `runtime-config.js`, so the same image works across environments.

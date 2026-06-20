@@ -1,6 +1,9 @@
 package org.librime.libribackend.DB.Model;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -23,16 +26,33 @@ public class Job {
     private UUID jobID;
     private String OutputFilePath;
     private String InputFilePath;
+
+    @Enumerated(EnumType.STRING)
+    @Column(columnDefinition = "VARCHAR(255)")
     private VoiceType voiceID;
+
+    @Enumerated(EnumType.STRING)
+    @Column(columnDefinition = "VARCHAR(255)")
     private SplittingType splittingID;
+
+    @Enumerated(EnumType.STRING)
+    @Column(columnDefinition = "VARCHAR(255)")
     private LanguageType InputLanguageID;
+
+    @Enumerated(EnumType.STRING)
+    @Column(columnDefinition = "VARCHAR(255)")
     private LanguageType OutputLanguageID;
+
+    @Enumerated(EnumType.STRING)
+    @Column(columnDefinition = "VARCHAR(255)")
     private StatusType status;
+
     private int progress;
     private Date timecreated;
     private String userId;
 
     public Job() {
+
         // Default constructor
     }
 
