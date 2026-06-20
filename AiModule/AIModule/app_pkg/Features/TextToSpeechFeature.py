@@ -75,7 +75,7 @@ class TextToSpeechFeature(BaseFeature):
             )
         elif model == "fr":
             self.tts = TTS(
-                model_name="tts_models/fr/mai/tacotron2-DDC",
+                model_name="tts_models/fr/css10/vits",
                 gpu=(self.device == "cuda")
             )
         else:

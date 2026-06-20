@@ -56,7 +56,9 @@ def _process_pull_message(message):
 
         push_body = {
             "message": {
-                "data": base64.b64encode(json.dumps(msg).encode("utf-8")).decode("utf-8")
+                "data": base64.b64encode(
+                    json.dumps(msg).encode("utf-8")
+                ).decode("utf-8")
             }
         }
 
@@ -66,8 +68,24 @@ def _process_pull_message(message):
         logger.info(f"Message {message.message_id} acknowledged")
 
     except Exception as e:
-        logger.error(f"Error processing Pub/Sub pull message: {e}", exc_info=True)
-        message.nack()
+        attempts = getattr(message, "delivery_attempt", None)
+        attempts = attempts if attempts is not None else 1
+
+        logger.error(
+            f"Error processing Pub/Sub pull message. Attempt {attempts}/3: {e}",
+            exc_info=True
+        )
+
+        if attempts >= 3:
+            logger.error(
+                f"Max attempts reached. Acking message {message.message_id}."
+            )
+            message.ack()
+        else:
+            logger.warning(
+                f"Nacking message {message.message_id} for retry."
+            )
+            message.nack()
 
 
 def _start_pull_subscriber():

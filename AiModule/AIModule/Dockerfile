@@ -43,14 +43,19 @@ RUN pip install --no-cache-dir --upgrade pip && \
 RUN mkdir -p /app/.local/share/tts /app/.local/share/argos-translate/packages
 
 RUN python -c "from TTS.api import TTS; \
-models=['tts_models/de/thorsten/tacotron2-DDC','tts_models/en/ljspeech/tacotron2-DDC','tts_models/fr/mai/tacotron2-DDC']; \
-[ TTS(model_name=m, progress_bar=False, gpu=False).tts_to_file(text='Test', file_path='/tmp/test_' + str(i) + '.wav') for i, m in enumerate(models) ]"
+models=[ \
+('tts_models/de/thorsten/tacotron2-DDC','Das ist ein Test.'), \
+('tts_models/en/ljspeech/tacotron2-DDC','This is a test.'), \
+('tts_models/fr/css10/vits','Bonjour, ceci est un test.') \
+]; \
+[ TTS(model_name=m, progress_bar=False, gpu=False).tts_to_file(text=t, file_path='/tmp/test_' + str(i) + '.wav') for i,(m,t) in enumerate(models) ]"
 
 RUN python -c "import argostranslate.package as p; \
 p.update_package_index(); \
-pairs=[('de','en'),('de','fr'),('en','de'),('en','fr'),('fr','de'),('fr','en')]; \
 available=p.get_available_packages(); \
-[ p.install_from_path(next(x for x in available if x.from_code==a and x.to_code==b).download()) for a,b in pairs ]"
+pairs=[('de','en'),('en','de'),('en','fr'),('fr','en')]; \
+pkgs=[next((x for x in available if x.from_code==a and x.to_code==b), None) for a,b in pairs]; \
+[print(f'Installing {a}->{b}: {pkg is not None}') or (pkg and p.install_from_path(pkg.download())) for (a,b),pkg in zip(pairs,pkgs)]"
 
 COPY . .
 
