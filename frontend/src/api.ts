@@ -1,7 +1,8 @@
 import { auth } from './auth/firebase';
+import { getRuntimeConfig } from './runtimeConfig';
 
 const DEFAULT_BASE_URL = 'https://libribackend-4130931555.europe-west3.run.app';
-const BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? DEFAULT_BASE_URL).replace(/\/$/, '');
+const BASE_URL = (getRuntimeConfig().apiBaseUrl ?? DEFAULT_BASE_URL).replace(/\/$/, '');
 const USES_LOCAL_API_PROXY = /^\/api(?:\/|$)/i.test(BASE_URL);
 const RESULT_BASE_URL = USES_LOCAL_API_PROXY ? BASE_URL : BASE_URL.replace(/\/api$/i, '');
 

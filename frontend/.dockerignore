@@ -1,0 +1,7 @@
+node_modules
+dist
+.git
+.gitignore
+README.md
+cloud_config 1.md
+npm-debug.log
