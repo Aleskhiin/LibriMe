@@ -1,9 +1,38 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import UploadForm from './components/UploadForm';
 import JobList from './components/JobList';
-import { createJob, getHealth, listJobs, type JobRecord } from './api';
+import AuthMenu from './components/AuthMenu';
+import LanguageToggle from './components/LanguageToggle';
+import { createJob, listJobs, type JobRecord } from './api';
 import { useJobPolling } from './hooks/useJobPolling';
 import type { JobEntry } from './types';
+import librimeBg from './assets/librime_bg.png';
+import { useI18n } from './i18n';
+import { useAuth } from './auth/AuthProvider';
+
+const SUPPORTED_FORMATS = [
+  '.png',
+  '.jpg',
+  '.jpeg',
+  '.bmp',
+  '.tif',
+  '.tiff',
+  '.webp',
+  '.pdf',
+  '.txt',
+  '.md',
+  '.markdown',
+  '.doc',
+  '.docx',
+  '.odt',
+  '.ppt',
+  '.pptx',
+  '.html',
+  '.htm',
+  '.csv',
+  '.json',
+].join(', ');
 
 function toJobEntry(job: JobRecord): JobEntry {
   return {
@@ -13,12 +42,20 @@ function toJobEntry(job: JobRecord): JobEntry {
 }
 
 export default function App() {
+  const { t } = useI18n();
+  const { user } = useAuth();
   const [jobs, setJobs] = useState<JobEntry[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [isLoadingJobs, setIsLoadingJobs] = useState(true);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [listError, setListError] = useState<string | null>(null);
-  const [apiHealth, setApiHealth] = useState<string>('unbekannt');
+  const maxFileSizeMB = user ? 50 : 10;
+  const hasActiveJob = jobs.some(job => job.status === 'QUEUED' || job.status === 'RUNNING');
+  const uploadDisabledReason = isLoadingJobs
+    ? t('appJobsLoadingBlock')
+    : hasActiveJob
+      ? t('appActiveJobBlock')
+      : undefined;
 
   const updateJob = useCallback((jobID: string, updates: Partial<JobEntry>) => {
     setJobs(prev =>
@@ -33,16 +70,14 @@ export default function App() {
     setListError(null);
 
     try {
-      const [records, health] = await Promise.all([listJobs(), getHealth()]);
+      const records = await listJobs();
       setJobs(records.map(toJobEntry));
-      setApiHealth(health);
     } catch (err) {
-      setListError(err instanceof Error ? err.message : 'Jobliste konnte nicht geladen werden.');
-      setApiHealth('nicht erreichbar');
+      setListError(err instanceof Error ? err.message : t('appListError'));
     } finally {
       setIsLoadingJobs(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     loadJobs();
@@ -55,6 +90,11 @@ export default function App() {
     voiceID: string;
     splittingID: string;
   }) => {
+    if (uploadDisabledReason) {
+      setUploadError(uploadDisabledReason);
+      return;
+    }
+
     setIsUploading(true);
     setUploadError(null);
 
@@ -66,32 +106,30 @@ export default function App() {
       };
       setJobs(prev => [newJob, ...prev]);
     } catch (err) {
-      setUploadError(err instanceof Error ? err.message : 'Unbekannter Fehler beim Upload.');
+      setUploadError(err instanceof Error ? err.message : t('appUploadUnknownError'));
     } finally {
       setIsUploading(false);
     }
   };
-
-  const handleDelete = useCallback((jobID: string) => {
-    setJobs(prev => prev.filter(job => job.jobID !== jobID));
-  }, []);
 
   const handleRetry = useCallback((jobID: string) => {
     setJobs(prev => prev.filter(job => job.jobID !== jobID));
   }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50/30 to-slate-100">
-      <header className="border-b border-white/60 bg-white/70 backdrop-blur-sm">
+    <div
+      className="min-h-screen bg-cover bg-center bg-fixed text-stone-900"
+      style={{ backgroundImage: `linear-gradient(rgba(255, 247, 237, 0.82), rgba(255, 237, 213, 0.74)), url(${librimeBg})` }}
+    >
+      <header className="border-b border-orange-200/70 bg-orange-50/80 backdrop-blur-sm">
         <div className="mx-auto flex max-w-5xl items-center gap-4 px-6 py-4">
           <img src="/logo.png" alt="LibriMe Logo" className="h-9 w-auto" />
           <div className="min-w-0 flex-1">
-            <h1 className="text-xl font-bold tracking-tight text-gray-900">LibriMe</h1>
-            <p className="text-xs italic text-gray-500">"Freedom starts in your ear."</p>
+            <h1 className="text-xl font-bold tracking-tight text-stone-950">LibriMe</h1>
+            <p className="text-xs italic text-stone-600">"Freedom starts in your ear."</p>
           </div>
-          <span className="rounded-full bg-green-50 px-3 py-1 text-xs font-medium text-green-700">
-            API: {apiHealth}
-          </span>
+          <AuthMenu />
+          <LanguageToggle />
         </div>
       </header>
 
@@ -99,14 +137,19 @@ export default function App() {
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
           <div>
             <div className="mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">Neues Hoerbuch erstellen</h2>
-              <p className="mt-1 text-sm text-gray-500">
-                Lade eine PDF-Datei hoch und waehle deine Einstellungen.
+              <h2 className="text-2xl font-bold text-stone-950">{t('appNewAudiobookTitle')}</h2>
+              <p className="mt-1 text-sm text-stone-600">
+                {t('appNewAudiobookSubtitle')}
               </p>
             </div>
 
-            <div className="rounded-2xl border border-white bg-white/80 p-6 shadow-sm backdrop-blur-sm">
-              <UploadForm onSubmit={handleSubmit} isLoading={isUploading} />
+            <div className="rounded-2xl border border-orange-100 bg-orange-50/85 p-6 shadow-sm shadow-orange-900/5 backdrop-blur-sm">
+              <UploadForm
+                onSubmit={handleSubmit}
+                isLoading={isUploading}
+                maxFileSizeMB={maxFileSizeMB}
+                submitDisabledReason={uploadDisabledReason}
+              />
 
               {uploadError && (
                 <div className="mt-4 flex items-start gap-2 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -118,10 +161,13 @@ export default function App() {
               )}
             </div>
 
-            <div className="mt-4 rounded-xl bg-indigo-50/70 px-4 py-3">
-              <p className="text-xs font-medium text-indigo-800">Unterstuetzte Formate</p>
-              <p className="mt-0.5 text-xs text-indigo-600">
-                PDF-Dokumente werden automatisch in hochwertige Audiobooks konvertiert. Die Verarbeitung erfolgt serverseitig.
+            <div className="mt-4 rounded-xl border border-orange-200/80 bg-orange-100/80 px-4 py-3 text-orange-950">
+              <p className="text-xs font-medium">{t('appSupportedFormats')}</p>
+              <p className="mt-0.5 text-xs text-orange-800">
+                {SUPPORTED_FORMATS}
+              </p>
+              <p className="mt-1 text-xs font-medium text-orange-900">
+                {t('appUploadLimit', { limit: maxFileSizeMB })}
               </p>
             </div>
           </div>
@@ -129,29 +175,21 @@ export default function App() {
           <div>
             <div className="mb-6 flex flex-wrap items-center justify-between gap-2">
               <div>
-                <h2 className="text-2xl font-bold text-gray-900">Meine Jobs</h2>
-                <p className="mt-1 text-sm text-gray-500">
+                <h2 className="text-2xl font-bold text-stone-950">{t('appMyJobs')}</h2>
+                <p className="mt-1 text-sm text-stone-600">
                   {jobs.length === 0
-                    ? isLoadingJobs ? 'Auftraege werden geladen.' : 'Noch keine Auftraege gestartet.'
-                    : `${jobs.length} ${jobs.length === 1 ? 'Auftrag' : 'Auftraege'} insgesamt`}
+                    ? isLoadingJobs ? t('appJobsLoading') : t('appNoJobsStarted')
+                    : jobs.length === 1 ? t('appOneJobTotal') : t('appManyJobsTotal', { count: jobs.length })}
                 </p>
               </div>
               <div className="flex items-center gap-2">
                 <button
                   onClick={loadJobs}
                   disabled={isLoadingJobs}
-                  className="rounded-lg px-3 py-1.5 text-xs font-medium text-indigo-600 transition-colors hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded-lg px-3 py-1.5 text-xs font-medium text-orange-700 transition-colors hover:bg-orange-100 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  Aktualisieren
+                  {t('appRefresh')}
                 </button>
-                {jobs.length > 0 && (
-                  <button
-                    onClick={() => setJobs([])}
-                    className="rounded-lg px-3 py-1.5 text-xs font-medium text-gray-500 transition-colors hover:bg-red-50 hover:text-red-600"
-                  >
-                    Alle lokal entfernen
-                  </button>
-                )}
               </div>
             </div>
 
@@ -161,13 +199,18 @@ export default function App() {
               </div>
             )}
 
-            <JobList jobs={jobs} onDelete={handleDelete} onRetry={handleRetry} />
+            <JobList jobs={jobs} onRetry={handleRetry} />
           </div>
         </div>
       </main>
 
-      <footer className="mt-16 border-t border-gray-200 bg-white/50 py-6 text-center text-xs text-gray-400">
-        <p>LibriMe - PDF zu Hoerbuch - Powered by OCR &amp; TTS</p>
+      <footer className="mt-16 border-t border-orange-200/70 bg-orange-50/70 py-6 text-center text-xs text-stone-500">
+        <div className="mx-auto flex max-w-5xl flex-col items-center justify-center gap-2 px-6 sm:flex-row sm:gap-4">
+          <p>{t('appFooter')}</p>
+          <Link to="/impressum" className="font-medium text-orange-700 underline-offset-4 hover:underline">
+            {t('footerImprint')}
+          </Link>
+        </div>
       </footer>
     </div>
   );
