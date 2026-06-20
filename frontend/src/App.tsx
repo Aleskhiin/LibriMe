@@ -43,7 +43,7 @@ function toJobEntry(job: JobRecord): JobEntry {
 
 export default function App() {
   const { t } = useI18n();
-  const { user } = useAuth();
+  const { user, isAuthLoading } = useAuth();
   const [jobs, setJobs] = useState<JobEntry[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [isLoadingJobs, setIsLoadingJobs] = useState(true);
@@ -80,8 +80,10 @@ export default function App() {
   }, [t]);
 
   useEffect(() => {
-    loadJobs();
-  }, [loadJobs]);
+    if (!isAuthLoading) {
+      loadJobs();
+    }
+  }, [isAuthLoading, user, loadJobs]);
 
   const handleSubmit = async (params: {
     file: File;

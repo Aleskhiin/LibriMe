@@ -38,7 +38,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
 
-        if (request.getMethod().equals("PUT") && request.getServletPath().startsWith("/jobs/")) {
+        if (request.getMethod().equalsIgnoreCase("OPTIONS")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        String path = request.getServletPath();
+        if (path.equals("/health") || path.startsWith("/v3/api-docs") || path.startsWith("/swagger-ui")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        if (request.getMethod().equals("PUT") && path.startsWith("/jobs/")) {
             filterChain.doFilter(request, response);
             return;
         }
