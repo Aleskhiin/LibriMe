@@ -17,14 +17,14 @@ export default function JobList({ jobs, onDelete, onRetry }: JobListProps) {
           </svg>
         </div>
         <p className="mt-3 font-medium text-gray-500">Noch keine Jobs</p>
-        <p className="mt-1 text-sm text-gray-400">Lade eine Datei hoch, um dein erstes Hörbuch zu erstellen.</p>
+        <p className="mt-1 text-sm text-gray-400">Lade eine Datei hoch, um dein erstes Hoerbuch zu erstellen.</p>
       </div>
     );
   }
 
-  const activeJobs = jobs.filter(j => j.status === 'QUEUED' || j.status === 'RUNNING');
-  const completedJobs = jobs.filter(j => j.status === 'COMPLETED');
-  const failedJobs = jobs.filter(j => j.status === 'FAILED');
+  const activeJobs = jobs.filter(job => job.status === 'QUEUED' || job.status === 'RUNNING');
+  const completedJobs = jobs.filter(job => job.status === 'COMPLETED');
+  const failedJobs = jobs.filter(job => job.status === 'FAILED');
 
   return (
     <div className="space-y-6">
