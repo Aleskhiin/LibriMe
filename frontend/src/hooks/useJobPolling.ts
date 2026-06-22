@@ -25,7 +25,8 @@ export function useJobPolling({ jobs, onUpdate }: UseJobPollingProps) {
         const poll = async () => {
           try {
             const status = await getJobStatus(jobID);
-            const { createdAt, ...updates } = status;
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            const { createdAt, fileLanguage, translationLanguage, ...updates } = status;
             onUpdate(jobID, {
               ...updates,
               ...(createdAt ? { createdAt: new Date(createdAt) } : {}),
