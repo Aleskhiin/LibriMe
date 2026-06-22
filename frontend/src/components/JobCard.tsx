@@ -58,6 +58,7 @@ export default function JobCard({ job, onRetry }: JobCardProps) {
   const resultUrl = job.downloadURL ?? getResultUrl(job.jobID);
   const downloadFilename = `${job.fileName.replace(/\.[^/.]+$/, '')}.wav`;
 
+
   const handleDownload = async () => {
     setIsDownloading(true);
     setDownloadError(null);

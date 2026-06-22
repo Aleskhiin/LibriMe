@@ -52,23 +52,48 @@ public class JobController {
         return (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
     }
 
+    private Job getJobAndValidateOwnership(UUID jobID) {
+        Job job = jobService.getJobByJobId(jobID);
+        if (job == null) {
+            throw new ResourceNotFoundException("Job with ID " + jobID + " not found");
+        }
+        if (!job.getUserId().equals(getCurrentUserId())) {
+            throw new UnauthorizedAccessException("You do not have permission to access this job");
+        }
+        return job;
+    }
+
+    private String getJobRecordDownloadUrl(Job job) {
+        if (job.getStatus() == StatusType.COMPLETED && job.getOutputFilePath() != null) {
+            try {
+                String signedUrl = storageService.getDownloadUrl(job.getOutputFilePath());
+                if (signedUrl != null) {
+                    return signedUrl;
+                }
+            } catch (Exception e) {
+                log.error("Failed to generate signed download URL for job {}: {}", job.getJobID(), e.getMessage());
+            }
+        }
+        return "/jobs/" + job.getJobID() + "/result";
+    }
+
     @GetMapping("/jobs")
     public List<JobRecord> getAllJobs() {
         String userId = getCurrentUserId();
         log.info("Received request for all jobs for user: {}", userId);
         List<Job> jobs = jobService.getJobsByUserId(userId);
         return jobs.stream()
-                .map(job -> new StatusJobRecord(job.getJobID(), job.getStatus(), job.getProgress(), "/jobs/"+job.getJobID()+"/result", ""))
+                .map(job -> new StatusJobRecord(job.getJobID(), job.getStatus(), job.getProgress(), getJobRecordDownloadUrl(job), ""))
                 .collect(Collectors.toList());
     }
 
     @PostMapping("/jobs")
     @ResponseStatus(HttpStatus.ACCEPTED)
-    public JobRecord newJob(@RequestParam("file") MultipartFile multipartFile,
-                            @RequestParam("fileLanguage") LanguageType fileLanguage,
-                            @RequestParam("translationLanguage") LanguageType translationLanguage,
-                            @RequestParam("voiceID") VoiceType voiceType,
-                            @RequestParam("splittingID") SplittingType splittingType ){
+    public JobRecord createJob(@RequestParam("file") MultipartFile multipartFile,
+                               @RequestParam("fileLanguage") LanguageType fileLanguage,
+                               @RequestParam("translationLanguage") LanguageType translationLanguage,
+                               @RequestParam("voiceID") VoiceType voiceType,
+                               @RequestParam("splittingID") SplittingType splittingType ){
         UUID uuid = UUID.randomUUID();
         String userId = getCurrentUserId();
         String fileName = multipartFile.getOriginalFilename();
@@ -78,7 +103,7 @@ public class JobController {
 
         String filePath = storageService.storeFile(multipartFile, uuid);
 
-        log.info("file: {} transfered to {} ",fileName, filePath);
+        log.info("file: {} transferred to {} ", fileName, filePath);
         Job job = new Job(uuid, filePath, voiceType, splittingType, fileLanguage, translationLanguage, StatusType.QUEUED);
         job.setUserId(userId);
         jobService.createJob(job);
@@ -88,25 +113,17 @@ public class JobController {
     }
 
     @GetMapping("/jobs/{jobID}")
-    public JobRecord updateJob(@PathVariable UUID jobID){
+    public JobRecord getJobStatus(@PathVariable UUID jobID){
         log.info("Received status request for job ID: {}", jobID);
-        Job job = jobService.getJobByJobId(jobID);
-        
-        if (job == null) {
-            throw new ResourceNotFoundException("Job with ID " + jobID + " not found");
-        }
-        if (!job.getUserId().equals(getCurrentUserId())) {
-            throw new UnauthorizedAccessException("You do not have permission to access this job");
-        }
-        
-        return new StatusJobRecord(job.getJobID(), job.getStatus(), job.getProgress(), "/jobs/"+jobID+"/result", "");
+        Job job = getJobAndValidateOwnership(jobID);
+        return new StatusJobRecord(job.getJobID(), job.getStatus(), job.getProgress(), getJobRecordDownloadUrl(job), "");
     }
 
     @PutMapping("/jobs/{jobID}")
-    public JobRecord statusJob(@PathVariable UUID jobID,
-                                                @RequestParam("status") StatusType status,
-                                                @RequestParam("progress") int progress,
-                                                @RequestParam("outputFilePath") String OutputFilePath
+    public JobRecord updateJobStatus(@PathVariable UUID jobID,
+                                     @RequestParam("status") StatusType status,
+                                     @RequestParam("progress") int progress,
+                                     @RequestParam("outputFilePath") String outputFilePath
     ) {
         log.info("Received update request for job ID: {}", jobID);
 
@@ -117,24 +134,17 @@ public class JobController {
 
         job.setStatus(status);
         job.setProgress(progress);
-        job.setOutputFilePath(OutputFilePath);
+        job.setOutputFilePath(outputFilePath);
 
         jobService.updateJob(job);
 
-        return new StatusJobRecord(job.getJobID(), job.getStatus(), job.getProgress(), "/jobs/"+jobID+"/result", "");
+        return new StatusJobRecord(job.getJobID(), job.getStatus(), job.getProgress(), getJobRecordDownloadUrl(job), "");
     }
 
     @GetMapping("/jobs/{jobID}/result")
-    public ResponseEntity<Resource> result(@PathVariable UUID jobID) throws MalformedURLException {
+    public ResponseEntity<Resource> getJobResult(@PathVariable UUID jobID) throws MalformedURLException {
         log.info("Received result request for job ID: {}", jobID);
-        Job job = jobService.getJobByJobId(jobID);
-        
-        if (job == null) {
-            throw new ResourceNotFoundException("Job with ID " + jobID + " not found");
-        }
-        if (!job.getUserId().equals(getCurrentUserId())) {
-            throw new UnauthorizedAccessException("You do not have permission to access this job");
-        }
+        Job job = getJobAndValidateOwnership(jobID);
 
         // Try to get a signed URL first (for GCS)
         String signedUrl = storageService.getDownloadUrl(job.getOutputFilePath());
