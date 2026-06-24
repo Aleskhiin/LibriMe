@@ -97,10 +97,10 @@ function normalizeJobRecord(raw: RawJobRecord): JobRecord {
   return {
     jobID,
     fileName: asString(raw.fileName ?? raw.filename ?? raw.originalFileName, jobID || 'Unbekannte Datei'),
-    fileLanguage: asString(raw.fileLanguage, 'en_US'),
-    translationLanguage: asString(raw.translationLanguage, 'en_US'),
-    voiceID: asString(raw.voiceID ?? raw.voiceId, 'male_v1'),
-    splittingID: asString(raw.splittingID ?? raw.splittingId, 'DOCUMENT'),
+    fileLanguage: asString(raw.fileLanguage),
+    translationLanguage: asString(raw.translationLanguage),
+    voiceID: asString(raw.voiceID ?? raw.voiceId),
+    splittingID: asString(raw.splittingID ?? raw.splittingId),
     status,
     progress: asNumber(raw.progress, status === 'COMPLETED' ? 100 : 0),
     downloadURL: downloadURL ? resolveResultUrl(downloadURL) : null,
@@ -212,25 +212,8 @@ function startBrowserDownload(url: string, filename: string): void {
 export async function downloadJobResult(resultUrl: string, fallbackFilename: string): Promise<void> {
   const resolvedUrl = resolveResultUrl(resultUrl);
   const fallbackDownloadName = fallbackFilename || 'download.wav';
-
-  if (isExternalUrl(resolvedUrl)) {
-    startBrowserDownload(resolvedUrl, fallbackDownloadName);
-    return;
-  }
-
-  const res = await authenticatedFetch(resolvedUrl, { redirect: 'manual' });
-  if (res.status >= 300 && res.status < 400) {
-    const location = res.headers.get('Location');
-    if (location) {
-      startBrowserDownload(location, fallbackDownloadName);
-      return;
-    }
-  }
-
-  if (res.type === 'opaqueredirect') {
-    startBrowserDownload(resolvedUrl, fallbackDownloadName);
-    return;
-  }
+  const fetchResult = isExternalUrl(resolvedUrl) ? fetch(resolvedUrl) : authenticatedFetch(resolvedUrl);
+  const res = await fetchResult;
 
   if (!res.ok) {
     const text = await res.text();
@@ -250,5 +233,5 @@ export async function downloadJobResult(resultUrl: string, fallbackFilename: str
     fallbackDownloadName;
 
   startBrowserDownload(objectUrl, filename);
-  window.URL.revokeObjectURL(objectUrl);
+  window.setTimeout(() => window.URL.revokeObjectURL(objectUrl), 1000);
 }

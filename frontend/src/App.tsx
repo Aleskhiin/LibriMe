@@ -35,20 +35,8 @@ const SUPPORTED_FORMATS = [
 ].join(', ');
 
 function toJobEntry(job: JobRecord): JobEntry {
-  // Gespeicherte Sprachinfos aus localStorage wiederherstellen
-  let fileLanguage = job.fileLanguage;
-  let translationLanguage = job.translationLanguage;
-  try {
-    const stored = JSON.parse(localStorage.getItem('jobLanguages') ?? '{}');
-    if (stored[job.jobID]) {
-      fileLanguage = stored[job.jobID].fileLanguage ?? fileLanguage;
-      translationLanguage = stored[job.jobID].translationLanguage ?? translationLanguage;
-    }
-  } catch { /* ignore */ }
   return {
     ...job,
-    fileLanguage,
-    translationLanguage,
     createdAt: job.createdAt ? new Date(job.createdAt) : new Date(),
   };
 }
@@ -114,17 +102,9 @@ export default function App() {
 
     try {
       const response = await createJob(params);
-      // Backend gibt keine Sprachfelder zurück — lokal per jobID speichern
-      try {
-        const stored = JSON.parse(localStorage.getItem('jobLanguages') ?? '{}');
-        stored[response.jobID] = { fileLanguage: params.fileLanguage, translationLanguage: params.translationLanguage };
-        localStorage.setItem('jobLanguages', JSON.stringify(stored));
-      } catch { /* ignore */ }
       const newJob: JobEntry = {
         ...toJobEntry(response),
         fileName: response.fileName || params.file.name,
-        fileLanguage: params.fileLanguage,
-        translationLanguage: params.translationLanguage,
       };
       setJobs(prev => [newJob, ...prev]);
     } catch (err) {
@@ -143,7 +123,7 @@ export default function App() {
       className="min-h-screen bg-cover bg-center bg-fixed text-stone-900"
       style={{ backgroundImage: `linear-gradient(rgba(255, 247, 237, 0.82), rgba(255, 237, 213, 0.74)), url(${librimeBg})` }}
     >
-      <header className="relative z-50 border-b border-orange-200/70 bg-orange-50/80 backdrop-blur-sm">
+      <header className="border-b border-orange-200/70 bg-orange-50/80 backdrop-blur-sm">
         <div className="mx-auto flex max-w-5xl items-center gap-4 px-6 py-4">
           <img src="/logo.png" alt="LibriMe Logo" className="h-9 w-auto" />
           <div className="min-w-0 flex-1">

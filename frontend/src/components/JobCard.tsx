@@ -56,6 +56,7 @@ export default function JobCard({ job, onRetry }: JobCardProps) {
   const isCompleted = job.status === 'COMPLETED';
   const isFailed = job.status === 'FAILED';
   const resultUrl = job.downloadURL ?? getResultUrl(job.jobID);
+  const downloadUrl = getResultUrl(job.jobID);
   const downloadFilename = `${job.fileName.replace(/\.[^/.]+$/, '')}.wav`;
 
 
@@ -64,7 +65,7 @@ export default function JobCard({ job, onRetry }: JobCardProps) {
     setDownloadError(null);
 
     try {
-      await downloadJobResult(resultUrl, downloadFilename);
+      await downloadJobResult(downloadUrl, downloadFilename);
     } catch (err) {
       setDownloadError(err instanceof Error ? err.message : t('jobDownloadFailed'));
     } finally {
@@ -118,21 +119,6 @@ export default function JobCard({ job, onRetry }: JobCardProps) {
             {SPLITTING_LABEL_KEYS[job.splittingID] ? t(SPLITTING_LABEL_KEYS[job.splittingID]) : job.splittingID}
           </span>
         </div>
-
-        {isActive && (
-          <div className="mt-4">
-            <div className="mb-1 flex items-center justify-between text-xs text-stone-500">
-              <span>{job.status === 'QUEUED' ? t('jobWaiting') : t('jobProcessing')}</span>
-              <span>{job.progress}%</span>
-            </div>
-            <div className="h-2 w-full overflow-hidden rounded-full bg-orange-100">
-              <div
-                className="h-full rounded-full bg-orange-500 transition-all duration-500"
-                style={{ width: `${Math.max(0, Math.min(100, job.progress))}%` }}
-              />
-            </div>
-          </div>
-        )}
 
         {isFailed && job.error && (
           <div className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">
