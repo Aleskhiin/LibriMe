@@ -45,8 +45,8 @@ For development purposes, services can be executed individually within their res
 ## Project Structure
 
 * **Backend**: Java based orchestrator for job management. See [Backend Documentation](Backend/README.md).
-* **AI Module**: Python services for OCR and speech synthesis.
-* **Frontend**: React application for user interaction.
+* **AI Module**: Python services for OCR and speech synthesis. [AI Module Documentation](AiModule/README.md).
+* **Frontend**: React application for user interaction. [Frontend Documentation](frontend/README.md).
 
 ## Roadmap and Status
 
@@ -65,3 +65,35 @@ This project is released under the MIT License. See the LICENSE file for more in
 
 ## Architecture
 ![System Architecture Overview](misc/img/architecture_overview.png)
+
+## Project Team
+
+### Florian Fuchs
+- Project Manager
+- Co-AI Module Developer
+
+### Dominik Bliem-Zupansky
+- Frontend Developer
+- Marketing Manager
+
+### Georg Maier
+- AI Module Developer
+- Deputy Documentation Manager
+
+### Philip Macheiner
+- Backend Developer
+- Deputy Project Manager
+
+### Stefan Aldrian
+- Documentation Manager
+- Deputy Marketing Manager
+
+## Live Proof of Concept
+
+The latest version of LibriMe can be accessed at:
+
+🌐 https://www.librime.fun
+
+The complete source code is available on GitHub:
+
+💻 https://github.com/Aleskhiin/LibriMe
