@@ -78,15 +78,15 @@ This project is released under the MIT License. See the LICENSE file for more in
 
 ### Georg Maier
 - AI Module Developer
-- Deputy Documentation Manager
+- Assistant Documentation Manager
 
 ### Philip Macheiner
 - Backend Developer
-- Deputy Project Manager
+- Assistant Project Manager
 
 ### Stefan Aldrian
 - Documentation Manager
-- Deputy Marketing Manager
+- Assistant Marketing Manager
 
 ## Live Proof of Concept
 
