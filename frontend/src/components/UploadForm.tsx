@@ -25,7 +25,11 @@ const VOICE_OPTIONS = [
   { value: 'female_v1', labelKey: 'optionFemale' },
 ];
 
-const ENGLISH_US_VOICE_ID = 'female_v1';
+const VOICE_BY_LANGUAGE: Record<string, string> = {
+  en_US: 'female_v1',
+  de_DE: 'male_v1',
+  fr_FR: 'male_v1',
+};
 
 const ACCEPTED_FILE_EXTENSIONS = [
   '.png',
@@ -64,7 +68,7 @@ export default function UploadForm({ onSubmit, isLoading, maxFileSizeMB, submitD
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileLanguage, setFileLanguage] = useState('en_US');
   const [translationLanguage, setTranslationLanguage] = useState('en_US');
-  const [voiceID, setVoiceID] = useState(ENGLISH_US_VOICE_ID);
+  const [voiceID, setVoiceID] = useState(VOICE_BY_LANGUAGE.en_US);
   const [splittingID, setSplittingID] = useState('DOCUMENT');
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -130,7 +134,7 @@ export default function UploadForm({ onSubmit, isLoading, maxFileSizeMB, submitD
       file: selectedFile,
       fileLanguage,
       translationLanguage,
-      voiceID: translationLanguage === 'en_US' ? ENGLISH_US_VOICE_ID : voiceID,
+      voiceID,
       splittingID,
     });
   };
@@ -138,10 +142,7 @@ export default function UploadForm({ onSubmit, isLoading, maxFileSizeMB, submitD
   const handleTranslationLanguageChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     const nextTranslationLanguage = event.target.value;
     setTranslationLanguage(nextTranslationLanguage);
-
-    if (nextTranslationLanguage === 'en_US') {
-      setVoiceID(ENGLISH_US_VOICE_ID);
-    }
+    setVoiceID(VOICE_BY_LANGUAGE[nextTranslationLanguage] ?? VOICE_BY_LANGUAGE.en_US);
   };
 
   const clearSelectedFile = (event: React.MouseEvent<HTMLButtonElement>) => {
@@ -272,13 +273,10 @@ export default function UploadForm({ onSubmit, isLoading, maxFileSizeMB, submitD
           <select
             value={voiceID}
             onChange={(event) => setVoiceID(event.target.value)}
-            disabled={translationLanguage === 'en_US'}
+            disabled
             className="w-full rounded-lg border border-orange-200 bg-white px-3 py-2.5 text-sm shadow-sm focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-200 disabled:cursor-not-allowed disabled:bg-orange-50 disabled:text-stone-500"
           >
-            {(translationLanguage === 'en_US'
-              ? VOICE_OPTIONS.filter(option => option.value === ENGLISH_US_VOICE_ID)
-              : VOICE_OPTIONS
-            ).map(option => (
+            {VOICE_OPTIONS.filter(option => option.value === voiceID).map(option => (
               <option key={option.value} value={option.value}>{t(option.labelKey)}</option>
             ))}
           </select>
