@@ -59,7 +59,14 @@ export default function App() {
 
   const updateJob = useCallback((jobID: string, updates: Partial<JobEntry>) => {
     setJobs(prev =>
-      prev.map(job => (job.jobID === jobID ? { ...job, ...updates } : job))
+      prev.map(job => (job.jobID === jobID ? {
+        ...job,
+        ...updates,
+        fileLanguage: updates.fileLanguage || job.fileLanguage,
+        translationLanguage: updates.translationLanguage || job.translationLanguage,
+        voiceID: updates.voiceID || job.voiceID,
+        splittingID: updates.splittingID || job.splittingID,
+      } : job))
     );
   }, []);
 
@@ -103,6 +110,10 @@ export default function App() {
       const newJob: JobEntry = {
         ...toJobEntry(response),
         fileName: response.fileName || params.file.name,
+        fileLanguage: response.fileLanguage || params.fileLanguage,
+        translationLanguage: response.translationLanguage || params.translationLanguage,
+        voiceID: response.voiceID || params.voiceID,
+        splittingID: response.splittingID || params.splittingID,
       };
       setJobs(prev => [newJob, ...prev]);
     } catch (err) {
@@ -123,11 +134,8 @@ export default function App() {
     >
       <header className="border-b border-orange-200/70 bg-orange-50/80 backdrop-blur-sm">
         <div className="mx-auto flex max-w-5xl items-center gap-4 px-6 py-4">
-          <img src="/logo.png" alt="LibriMe Logo" className="h-9 w-auto" />
-          <div className="min-w-0 flex-1">
-            <h1 className="text-xl font-bold tracking-tight text-stone-950">LibriMe</h1>
-            <p className="text-xs italic text-stone-600">"Freedom starts in your ear."</p>
-          </div>
+          <img src="/logoBig.png" alt="LibriMe Logo" className="h-12 w-auto rounded-md sm:h-14" />
+          <div className="flex-1" />
           <AuthMenu />
           <LanguageToggle />
         </div>
