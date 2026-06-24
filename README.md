@@ -94,7 +94,7 @@ The latest version of LibriMe can be accessed at:
 
 https://librime.fun
 
-[Website](misc/img/website.png)
+![Website](misc/img/website.png)
 
 The complete source code is available on GitHub:
 
