@@ -92,8 +92,10 @@ This project is released under the MIT License. See the LICENSE file for more in
 
 The latest version of LibriMe can be accessed at:
 
-🌐 https://www.librime.fun
+https://librime.fun
+
+[Website](misc/img/website.png)
 
 The complete source code is available on GitHub:
 
-💻 https://github.com/Aleskhiin/LibriMe
+https://github.com/Aleskhiin/LibriMe
