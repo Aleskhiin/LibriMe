@@ -110,6 +110,20 @@ class ConfigurableLogger:
 
         return file_handler
 
+    def _setup_file_rotation_and_retention(
+        self,
+        file_handler: TimedRotatingFileHandler,
+        log_dir: str,
+        retention_days: int,
+    ) -> None:
+        original_do_rollover = file_handler.doRollover
+
+        def do_rollover_with_retention():
+            original_do_rollover()
+            self._apply_retention(log_dir, retention_days)
+
+        file_handler.doRollover = do_rollover_with_retention
+
     @staticmethod
     def _apply_retention(log_dir: str, retention_days: int) -> None:
         """

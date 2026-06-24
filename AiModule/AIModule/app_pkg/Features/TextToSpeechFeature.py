@@ -61,18 +61,25 @@ class TextToSpeechFeature(BaseFeature):
         return output_path
     
     def set_LanguageModel(self, model: str):
-        
         logger.info(f"Set the language Model to '{model}'")
-        if(model == "de"):
+
+        if model == "de":
             self.tts = TTS(
-                model_name="tts_models/de/thorsten/tacotron2-DDC", 
+                model_name="tts_models/de/thorsten/tacotron2-DDC",
                 gpu=(self.device == "cuda")
             )
-        elif(model == "en"):
+        elif model == "en":
             self.tts = TTS(
                 model_name="tts_models/en/ljspeech/tacotron2-DDC",
                 gpu=(self.device == "cuda")
             )
+        elif model == "fr":
+            self.tts = TTS(
+                model_name="tts_models/fr/css10/vits",
+                gpu=(self.device == "cuda")
+            )
+        else:
+            raise ValueError(f"Unsupported TTS language: {model}")
 
     def configure(self,               
                         gen_text: str,

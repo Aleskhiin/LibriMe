@@ -3,6 +3,7 @@ import os
 import queue
 from typing import List, Dict, Any
 
+from app_pkg.Features.Images.ImageReaderFactory import ImageReaderFactory
 from app_pkg.Features.Readers.DocumentReaderFactory import DocumentReaderFactory
 from app_pkg.Features.TextToSpeechFeature import TextToSpeechFeature
 from app_pkg.Features.TranslatorFeature import TranslatorFeature
@@ -287,29 +288,48 @@ class FeatureWorker:
             f"'{input_file}' with read_mode='{mode}'."
         )
 
-        # Create the correct document reader based on the file extension
         reader = DocumentReaderFactory.create_reader(input_file)
 
-        # Configure the selected document reader
         reader.configure(
             file_path=input_file,
             reader_mode=mode,
             page_numbers=page_numbers
         )
 
-        # Execute the reader asynchronously via BaseFeature interface
-        result = await reader.process()
+        try:
+            result = await reader.process()
+
+        except ValueError as e:
+            logger.warning(
+                f"Document reader returned no valid content: {e}. "
+                f"Using fallback text."
+            )
+            result = "Datei leer"
+            mode = "document"
+
+        except Exception as e:
+            logger.error(
+                f"Unexpected document processing error: {e}. "
+                f"Using fallback text.",
+                exc_info=True
+            )
+            result = "Datei leer"
+            mode = "document"
 
         logger.info("Finish extracting text out of document.")
 
-        # In document mode, all content becomes one audio file
         if mode == "document":
             text = self._normalize_to_text(result)
 
-            # Optional translation of the complete document text
+            if not text or not text.strip():
+                logger.warning(
+                    "Document contains no readable content. "
+                    "Using fallback text."
+                )
+                text = "Datei leer"
+
             text = self._maybe_translate(text)
 
-            # Generate one audio file
             audio_path = self._tts_single(
                 text=text,
                 filename=filename
@@ -320,15 +340,15 @@ class FeatureWorker:
                 "audio": audio_path
             }
 
-        # In pages/paragraphs mode, content is handled as chunks
         chunks = self._normalize_to_chunks(result)
 
         if not chunks:
-            raise ValueError(
-                "Document reader returned no content for the selected read_mode."
+            logger.warning(
+                "Document reader returned no chunks. "
+                "Using fallback text."
             )
+            chunks = ["Datei leer"]
 
-        # Translate each chunk separately if needed
         if self.from_lang != self.to_lang:
             logger.info(
                 f"Start translation per chunk from "
@@ -350,7 +370,6 @@ class FeatureWorker:
 
             logger.info("Finish translation per chunk.")
 
-        # Generate one audio file per chunk
         audio_files: List[str] = []
 
         for i, chunk in enumerate(chunks, start=1):
