@@ -233,4 +233,17 @@ class LibriMeBackendIntegrationTests {
         assertThat(cookie).isNotNull();
         assertThat(cookie.getValue()).isNotEmpty();
     }
+
+    @Test
+    void LogoutEndpointTest() {
+        FluxExchangeResult<Void> result = webClient.post().uri("/auth/logout")
+                .exchange()
+                .expectStatus().isOk()
+                .returnResult(Void.class);
+
+        ResponseCookie cookie = result.getResponseCookies().getFirst("libriME_jwt");
+        assertThat(cookie).isNotNull();
+        assertThat(cookie.getValue()).isNotEmpty();
+        assertThat(cookie.getMaxAge().getSeconds()).isEqualTo(60 * 60 * 24 * 30);
+    }
 }

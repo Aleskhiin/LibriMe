@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { JobEntry } from '../types';
-import { downloadJobResult, getResultUrl } from '../api';
+import { downloadJobResult, getResultUrl, getJobStatus } from '../api';
 import { useI18n } from '../i18n';
 
 interface JobCardProps {
@@ -56,7 +56,6 @@ export default function JobCard({ job, onRetry }: JobCardProps) {
   const isCompleted = job.status === 'COMPLETED';
   const isFailed = job.status === 'FAILED';
   const resultUrl = job.downloadURL ?? getResultUrl(job.jobID);
-  const downloadUrl = getResultUrl(job.jobID);
   const downloadFilename = `${job.fileName.replace(/\.[^/.]+$/, '')}.wav`;
 
 
@@ -65,7 +64,16 @@ export default function JobCard({ job, onRetry }: JobCardProps) {
     setDownloadError(null);
 
     try {
-      await downloadJobResult(downloadUrl, downloadFilename);
+      let urlToDownload = resultUrl;
+      try {
+        const freshJob = await getJobStatus(job.jobID);
+        if (freshJob.downloadURL) {
+          urlToDownload = freshJob.downloadURL;
+        }
+      } catch (e) {
+        console.warn('Failed to refresh job status before download:', e);
+      }
+      await downloadJobResult(urlToDownload, downloadFilename);
     } catch (err) {
       setDownloadError(err instanceof Error ? err.message : t('jobDownloadFailed'));
     } finally {

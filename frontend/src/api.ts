@@ -235,3 +235,13 @@ export async function downloadJobResult(resultUrl: string, fallbackFilename: str
   startBrowserDownload(objectUrl, filename);
   window.setTimeout(() => window.URL.revokeObjectURL(objectUrl), 1000);
 }
+
+export async function logoutApi(): Promise<void> {
+  const res = await authenticatedFetch(`${BASE_URL}/auth/logout`, {
+    method: 'POST',
+  });
+  if (!res.ok) {
+    throw new Error(`Logout failed: ${res.statusText}`);
+  }
+}
+

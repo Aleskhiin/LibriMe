@@ -25,6 +25,9 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.core.io.Resource;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.context.SecurityContextHolder;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.http.ResponseCookie;
+import org.librime.libribackend.Security.JwtUtil;
 
 import java.net.MalformedURLException;
 import java.util.List;
@@ -38,14 +41,16 @@ public class JobController {
     private final JobService jobService;
     private final MessagePublisher messagePublisher;
     private final StorageService storageService;
+    private final JwtUtil jwtUtil;
 
     private static final Logger log = LoggerFactory.getLogger(JobController.class);
 
     @Autowired
-    public JobController(JobService jobService, MessagePublisher messagePublisher, StorageService storageService) {
+    public JobController(JobService jobService, MessagePublisher messagePublisher, StorageService storageService, JwtUtil jwtUtil) {
         this.jobService = jobService;
         this.messagePublisher = messagePublisher;
         this.storageService = storageService;
+        this.jwtUtil = jwtUtil;
     }
 
     private String getCurrentUserId() {
@@ -160,5 +165,19 @@ public class JobController {
                 .contentType(MediaType.parseMediaType("audio/mpeg"))
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + resource.getFilename() + "\"")
                 .body(resource);
+    }
+
+    @PostMapping("/auth/logout")
+    public ResponseEntity<Void> logout(HttpServletResponse response) {
+        String newLocalJwt = jwtUtil.generateToken(UUID.randomUUID().toString());
+        ResponseCookie cookie = ResponseCookie.from("libriME_jwt", newLocalJwt)
+                .httpOnly(true)
+                .secure(true)
+                .path("/")
+                .maxAge(60 * 60 * 24 * 30) // 30 days
+                .sameSite("None")
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+        return ResponseEntity.ok().build();
     }
 }

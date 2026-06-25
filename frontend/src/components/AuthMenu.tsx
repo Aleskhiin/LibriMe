@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
 import { useI18n } from '../i18n';
+import { logoutApi } from '../api';
 
 export default function AuthMenu() {
   const navigate = useNavigate();
@@ -42,6 +43,11 @@ export default function AuthMenu() {
   };
 
   const handleLogout = async () => {
+    try {
+      await logoutApi();
+    } catch (err) {
+      console.error('Backend logout failed:', err);
+    }
     await logout();
     setIsOpen(false);
     navigate('/');
