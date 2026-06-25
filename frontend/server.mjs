@@ -31,6 +31,7 @@ function runtimeConfigScript() {
 }
 
 const server = http.createServer(async (req, res) => {
+  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
   const requestUrl = new URL(req.url ?? '/', `http://${req.headers.host ?? 'localhost'}`);
   let pathname = decodeURIComponent(requestUrl.pathname);
 
