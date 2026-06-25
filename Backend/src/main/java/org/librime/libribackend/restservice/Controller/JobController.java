@@ -82,13 +82,39 @@ public class JobController {
         return "/jobs/" + job.getJobID() + "/result";
     }
 
+    private String getFileNameFromPath(String path) {
+        if (path == null) {
+            return "";
+        }
+        int lastSlash = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'));
+        if (lastSlash >= 0) {
+            return path.substring(lastSlash + 1);
+        }
+        return path;
+    }
+
+    private StatusJobRecord mapToStatusJobRecord(Job job) {
+        return new StatusJobRecord(
+                job.getJobID(),
+                job.getStatus(),
+                job.getProgress(),
+                getJobRecordDownloadUrl(job),
+                "",
+                getFileNameFromPath(job.getInputFilePath()),
+                job.getInputLanguageID(),
+                job.getOutputLanguageID(),
+                job.getVoiceID(),
+                job.getSplittingID()
+        );
+    }
+
     @GetMapping("/jobs")
     public List<JobRecord> getAllJobs() {
         String userId = getCurrentUserId();
         log.info("Received request for all jobs for user: {}", userId);
         List<Job> jobs = jobService.getJobsByUserId(userId);
         return jobs.stream()
-                .map(job -> new StatusJobRecord(job.getJobID(), job.getStatus(), job.getProgress(), getJobRecordDownloadUrl(job), ""))
+                .map(this::mapToStatusJobRecord)
                 .collect(Collectors.toList());
     }
 
@@ -121,7 +147,7 @@ public class JobController {
     public JobRecord getJobStatus(@PathVariable UUID jobID){
         log.info("Received status request for job ID: {}", jobID);
         Job job = getJobAndValidateOwnership(jobID);
-        return new StatusJobRecord(job.getJobID(), job.getStatus(), job.getProgress(), getJobRecordDownloadUrl(job), "");
+        return mapToStatusJobRecord(job);
     }
 
     @PutMapping("/jobs/{jobID}")
@@ -143,7 +169,7 @@ public class JobController {
 
         jobService.updateJob(job);
 
-        return new StatusJobRecord(job.getJobID(), job.getStatus(), job.getProgress(), getJobRecordDownloadUrl(job), "");
+        return mapToStatusJobRecord(job);
     }
 
     @GetMapping("/jobs/{jobID}/result")

@@ -174,9 +174,6 @@ export async function getHealth(): Promise<string> {
   return res.text();
 }
 
-export function getResultUrl(jobID: string): string {
-  return resolveResultUrl(`/jobs/${encodeURIComponent(jobID)}/result`);
-}
 
 function getFilenameFromContentDisposition(header: string | null): string | null {
   if (!header) {

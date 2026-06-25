@@ -31,7 +31,7 @@ export default function ImprintPage() {
       className="min-h-screen bg-cover bg-center bg-fixed text-stone-900"
       style={{ backgroundImage: `linear-gradient(rgba(255, 247, 237, 0.82), rgba(255, 237, 213, 0.74)), url(${librimeBg})` }}
     >
-      <header className="border-b border-orange-200/70 bg-orange-50/80 backdrop-blur-sm">
+      <header className="relative z-10 border-b border-orange-200/70 bg-orange-50/80 backdrop-blur-sm">
         <div className="mx-auto flex max-w-5xl items-center gap-4 px-6 py-4">
           <img src="/logoBig.png" alt="LibriMe Logo" className="h-12 w-auto rounded-md sm:h-14" />
           <div className="flex-1" />

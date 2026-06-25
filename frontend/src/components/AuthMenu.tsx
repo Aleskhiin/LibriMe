@@ -69,7 +69,7 @@ export default function AuthMenu() {
       </button>
 
       {isOpen && (
-        <div className="absolute left-0 z-50 mt-2 w-72 max-h-[calc(100vh-5rem)] overflow-y-auto rounded-xl border border-orange-100 bg-white/95 p-3 text-left shadow-lg shadow-orange-900/10 backdrop-blur-sm">
+        <div className="absolute right-0 z-50 mt-2 w-72 max-h-[calc(100vh-5rem)] overflow-y-auto rounded-xl border border-orange-100 bg-white/95 p-3 text-left shadow-lg shadow-orange-900/10 backdrop-blur-sm">
           {user ? (
             <div className="space-y-2">
               <p className="truncate px-2 text-xs text-stone-500">

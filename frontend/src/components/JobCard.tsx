@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { JobEntry } from '../types';
-import { downloadJobResult, getResultUrl, getJobStatus } from '../api';
+import { downloadJobResult, getJobStatus } from '../api';
 import { useI18n } from '../i18n';
 
 interface JobCardProps {
@@ -40,14 +40,6 @@ const SPLITTING_LABEL_KEYS: Record<string, string> = {
   PARAGRAPH: 'optionParagraph',
 };
 
-function formatTime(date: Date | undefined, fallbackLabel: string): string {
-  if (!date || Number.isNaN(date.getTime())) {
-    return fallbackLabel;
-  }
-
-  return date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
-}
-
 export default function JobCard({ job, onRetry }: JobCardProps) {
   const { t } = useI18n();
   const [downloadError, setDownloadError] = useState<string | null>(null);
@@ -55,7 +47,7 @@ export default function JobCard({ job, onRetry }: JobCardProps) {
   const isActive = job.status === 'QUEUED' || job.status === 'RUNNING';
   const isCompleted = job.status === 'COMPLETED';
   const isFailed = job.status === 'FAILED';
-  const resultUrl = job.downloadURL ?? getResultUrl(job.jobID);
+  const resultUrl = job.downloadURL ?? '';
   const downloadFilename = `${job.fileName.replace(/\.[^/.]+$/, '')}.wav`;
 
 
@@ -99,7 +91,6 @@ export default function JobCard({ job, onRetry }: JobCardProps) {
             </div>
             <div className="min-w-0">
               <p className="truncate font-semibold text-stone-800">{job.fileName}</p>
-              <p className="text-xs text-stone-500">{formatTime(job.createdAt, t('jobJustNow'))}</p>
             </div>
           </div>
 
