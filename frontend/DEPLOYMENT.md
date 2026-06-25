@@ -35,7 +35,7 @@ gcloud builds submit --tag eu.gcr.io/librime/librifrontend ./frontend
 gcloud run deploy librifrontend \
   --image eu.gcr.io/librime/librifrontend \
   --platform managed \
-  --region europe-west3 \
+  --region europe-west4 \
   --service-account=librime-frontend-sa@librime.iam.gserviceaccount.com \
   --allow-unauthenticated \
   --set-env-vars="BACKEND_URL=https://libribackend-4130931555.europe-west3.run.app,\

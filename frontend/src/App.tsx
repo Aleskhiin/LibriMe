@@ -105,6 +105,10 @@ export default function App() {
       const newJob: JobEntry = {
         ...toJobEntry(response),
         fileName: response.fileName || params.file.name,
+        fileLanguage: response.fileLanguage || params.fileLanguage,
+        translationLanguage: response.translationLanguage || params.translationLanguage,
+        voiceID: response.voiceID || params.voiceID,
+        splittingID: response.splittingID || params.splittingID,
       };
       setJobs(prev => [newJob, ...prev]);
     } catch (err) {
